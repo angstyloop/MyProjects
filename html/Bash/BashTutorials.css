@@ -1,0 +1,91 @@
+/* This stylesheet is for bash tutorials. It helps makes snippets of code and step-by-step instructions more readable by allowing side-scrolling in code sections, enabling easy indentation within the coding section with nested divs by classing div with padding-left: 50px, and using custom counters in an ordered list by hiding the browser's default counters (lame regular-sized numbers) and using ::before to make new customizeable ones. Finally, I figured out you can taper the side borders by adding a much
+thicker white border at the bottom and using position and z-index to hide the stub. */
+
+/* This class is for containers    that wrap code snippets. */
+/* It makes sidescrolling possible and gives a background.  */
+.code {
+    font-family: courier;
+    width: 600px;
+    border-bottom: 40px solid white;
+    border-right: 3px solid orange;
+    padding: 15px 0px 15px 0px; 
+    /*background: WhiteSmoke;*/
+    /* Here's the side-scrolling magic. */
+    white-space: nowrap;
+    overflow-x: scroll;
+    scrollbar-base-color: orange;
+    position: relative;
+}
+
+.note {
+    padding-top:5px;
+   /* border-top: 3px dotted orange;*/
+    font-family: courier;
+    text-align: justify;
+    color: blue;
+    width: 600px;
+}
+
+/* This class gets rid of the browser's numbers in ordered lists */
+/* so we can make our own cool numbers with ::before.            */
+.custom-counter {
+    margin-left: 0;
+    padding-right: 0;
+    list-style-type: none;
+}
+
+/* This selector just provides a name for the counter for later */
+/* use with the ::before pseudoelement.                         */
+.custom-counter li {
+    counter-increment: custom-numbers;
+    
+}
+
+/* This is where we actually make the custom counter */
+.custom-counter li::before {
+    content: counter(custom-numbers);
+    margin-right: 5px;
+    font-size: 200%;
+    /*background-color: blue;*/
+    color: blue;
+    font-weight: bold;
+    padding: 3px 8px;
+    border-radius: 3px;
+    position: absolute;
+    font-family: courier;
+    border-left: 3px solid orange;
+    border-bottom: 50px solid white;
+}
+
+/* This pads divs that are part of ordered lists of the custom-counter */
+/* class so that the counter doesn't cover up the text. It also turns  */
+/* any div that inherits from either .custom-counter or .code into an  */
+/* automatic indenter! Not sure if that's good practice, but it sure   */
+/* is easy. */
+.custom-counter div, .code div {
+    padding-left: 50px;
+}
+
+/* These format the intro. */
+.intro {
+    font-family: Courier;
+    margin-left: 40px;
+    padding-left: 10px;
+    text-align: justify;
+    width: 642px;
+    position: relative;
+}
+
+h1.intro {
+    z-index: -1;
+    border-left: 3px solid orange;
+    border-bottom: 40px solid white;
+}
+
+.intro p {
+    text-indent: 50px;
+    padding-bottom: 10px;
+    position: relative;
+    border-right: 3px solid orange;
+    border-bottom: 40px solid white;
+}

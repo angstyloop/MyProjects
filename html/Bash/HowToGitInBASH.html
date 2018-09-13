@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>How to Git in BASH</title>
+        <style>
+            .snip {
+                font-family: "courier";
+                white-space: nowrap;
+                overflow-x: scroll;
+                padding-bottom: 15px;
+                padding-top: 15px;
+                background-color: WhiteSmoke;
+            }
+
+            .tab {
+                font-family: "courier";
+                margin-left: 50px;
+            }
+
+            .note {
+                color: blue;
+                font-family: "courier";
+            }
+        </style>
+    </head>
+
+    <body>
+        <h1>How to Git in BASH</h1>
+        <p>This is a summary of BASH commands I used to create and add an SSH key to Git, create a repository on Git, create a local repository, and add the contents of the local repo to the repo on Git. I'm using OS X 10.12 Sierra.</p>
+
+        <h2>Create an SSH key</h2>
+        <div class="snip">ssh-keygen -t rsa -b 4096 -C
+        "<em>your_email@example.com</em>"</div><br>
+        <div class="note">Press enter to use default file location</div><br>
+        <div class="note">Make a passphrase</div>
+
+        <h2>Add the SSH key to the SSH Agent</h2>
+        <div class="snip">eval "$(ssh-agent -s)"</div>
+        
+        <div class="note">Now add the following snippet to ~/.ssh/config</div><br>
+        <div style="font-family: Courier">Host *</div>
+        <div class="tab">
+        AddKeysToAgent yes<br>
+        UseKeychain yes<br>
+
+        IdentityFile ~/.ssh/id_rsa<br>
+        </div><br>
+
+        <div class="note">Then return to the shell and type</div><br>
+        <div class="snip">ssh-add -K ~/.ssh/id_rsa<br></div>
+
+        <h2>Add the SSH key to your Git</h2>
+        <div class="snip"> pbcopy < ~/.ssh/id_rsa.pub </div>
+        <div class="note">Now open your GitHub account in a browser and go to... <br><br>
+        <strong>Settings > SSH And GPG keys > New SSH key</strong></div><br>
+        <div class="note">Pick a descriptive title like "MacBook Air"</div><br>
+        <div class="note">Paste the key from your clipboard to the "Key" field</div><br>
+        <div class="note">Click <strong>Add SSH key</strong></div>
+        
+        <h2>Create a Git repository</h2>
+        <div class="snip"> curl -u '<em>username</em>'
+        https://api.github.com/user/repos -d 
+        '{"name":"<em>reponame</em>"}'</div><br>
+
+        <h2>Create a local repository</h2>
+        <div class="note">Go to the directory containing your project</div><br>
+        <div class="snip">touch README.md</div><br>
+        <div class="snip">git init</div><br>
+        <div class="snip">git add README.md</div><br>
+        <div class="snip">git commit -m "first commit"<br></div>
+
+        <h2>Alias your Git in .git/config</h2>
+        <div class="snip">git remote add origin
+        git@github.com:<em>username</em>/<em>reponame</em>.git<br></div>
+
+        <h2>Push your local master branch to master on Git</h2>
+        <div class="snip">git push origin master</div>
+
+</html>

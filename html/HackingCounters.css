@@ -1,0 +1,25 @@
+ol {
+    list-style-type: none;
+    /* You can also get rid of default padding/margin, but you don't have to.*/
+}
+
+li {
+    counter-increment: x;
+    font-size: 40px;
+}
+
+li::before{
+    content: counter(x);
+
+    /* Hack away... */
+
+    background-color: blue;
+    font-size: 50%;
+    color: white;
+    margin-right: 25px;
+    border-radius: 5px;
+    padding: 1px 8px;
+    position: relative;
+    bottom: 6px;
+
+}

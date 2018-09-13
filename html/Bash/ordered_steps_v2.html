@@ -1,0 +1,59 @@
+<!-- This is an example of html that could be used for ordered steps in bash tutorials. -->
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Ordered Steps</title>
+        <link href="./BashTutorials.css" type="text/css" rel="stylesheet">
+    </head>
+
+    <body>
+        <h1 class="intro">How to Do Something</h1>
+        <h4 class="intro">by Somebody</h4>
+        <div class="intro"><p>This is an introductory paragraph about the
+        tutorial that follows. Hopefully this introduction takes up
+        a few lines so we'll be able to see what it looks like.</p></div>
+        <ol class="custom-counter">
+            <li>
+                <div class="note">
+                    This is a note about the code below. If it gets longer than the width of this div element, which is 600px, it should just wrap to the bottom.
+                </div>
+                <br>
+                <div class="code">
+                    This is a long code snippet. If it gets too long, but we still want it on one line that's fine because we get a horizontal scroll bar.
+                </div>
+            </li>
+           
+            <li>
+            <div class="note">
+                This is a note about step 2.
+                </div>
+                <br>
+                <div class="code">
+                    This is another code snippet. <br>
+                    We can use line break to put code on multiple lines, and if one line gets longer than 600px we get a scroll bar too. <br>
+                    We can still keep using line break.
+
+                </div>
+            </li>
+            
+            <li>
+                <div class="note">
+                    This is a note about the third step.
+                </div>
+                <br>
+                <div class="code">
+                    Sometimes we'll want to indent some lines in
+                    our code. We can do this simply by nesting
+                    &lt;div&gt; tags.
+                    <div>This automatically line breaks and indents
+                        for us<div> since our stylesheet adds left
+                            padding</div> to anything that inherits from 
+                        .custom-counter or .code, </div>which makes 
+                    indenting lines of code
+                        <div>a snap!</div></div>
+                </div>
+            </li>
+        </ol>
+    </body>
+</html>
