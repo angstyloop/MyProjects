@@ -3,6 +3,7 @@
  */
 
 #include <iostream>
+#include <cstdlib> //for atoi()
 #include <vector>
 using namespace std;
 
@@ -38,11 +39,27 @@ bool Sum2(int x, vector<int> &A)
     return BSum(x,A,0,A.size()-1);
 }
 
-int main(int argc, char **argv)
+int main(int argc, char *argv[])
 {
-    int x = *argv[1] - '0'; /* gets the first command line argument, assumed to be a number,
+    if (argc != 2)
+    {
+        cout << "Please provide exactly one argument." << endl;
+        return -1;
+    }
+
+
+    int x = atoi(argv[1]); /* gets the first command line argument, assumed to be an integer,
                                and converts it from char to the actual int value.*/
     vector<int> A {1,2,3,4,5};
-    cout << Sum2(x, A) << endl;
+    cout << "Test Array: [ ";
+    for (auto x: A) cout << x << " ";
+    cout << "]" << endl;
+    int result = Sum2(x,A);
+    if (result)
+    {
+        cout << "The array contains at least two distinct numbers that sum to " << x << "." << endl;
+    }
+    else
+        cout << "The array does not contain two distinct numbers that sum to " << x << "." << endl;
     return 0;
 }
