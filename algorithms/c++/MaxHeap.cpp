@@ -76,6 +76,8 @@ void MaxHeap::HeapSort()
         heapsize--;
         MaxHeapify(0);
     }
+    // let's reset heapsize to the length of heap (a vector)
+    heapsize = heap.size();
 }
 
 int main(int argc, char **argv)
