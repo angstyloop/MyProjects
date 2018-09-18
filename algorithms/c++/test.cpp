@@ -1,20 +1,10 @@
 #include <iostream>
 #include <vector>
+#include <cstdlib>
 using namespace std;
-
-class A
-{
-    private:
-        int a = 1;
-    public:
-        void showa();
-};
-
-void A::showa() {cout << a << endl;}
 
 int main()
 {
-    class A a;
-    a.showa();
+    cout << "Oops, looks like sigterm didn't actually terminate anything." << endl;
     return 0;
 }

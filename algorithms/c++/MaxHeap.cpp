@@ -1,6 +1,6 @@
-/* The goal here is to implement heapsort by making a class MaxHeap that knows a method HeapSort for sorting
- * itself.
- */
+/* An object implementation of a max heap that supports sorting and priority queues. */
+
+/* the priority queue stuff still needs testing */
 
 #include <iostream>
 #include <vector>
@@ -8,11 +8,17 @@
 #include <cstdlib>
 using namespace std;
 
+struct HeapElement
+{
+    void *handle;   // points to an application object. remember void pointers must be explicityly cast.
+    int key;
+};
+
 class MaxHeap
 {
     private:
         int heapsize;
-        vector<int> heap;
+        vector<HeapElement> heap;
         
         static int Parent(int i);
         static int Left(int i);
@@ -20,7 +26,7 @@ class MaxHeap
 
         void Swap(int i, int j)
         {
-            int c = heap[i];
+            HeapElement c = heap[i];
             heap[i] = heap[j];
             heap[j] = c;
         }
@@ -28,12 +34,19 @@ class MaxHeap
         void BuildMaxHeap();
         
     public:
-        MaxHeap(vector<int>&);
+        MaxHeap(vector<HeapElement>&);
         void HeapSort();
         
         // getter methods for heap and heapsize
         int getheapsize() const {return heapsize;}
-        vector<int> getheap() const {return heap;}
+        vector<HeapElement> getheap() const {return heap;}
+
+        // these methods support usage of MaxHeap objects as priority queues
+        void* Max() {return heap[0].handle;}
+        void* ExtractMax();
+        void IncreaseKey(int i, int newKey);
+        void Insert(HeapElement &newElement);
+        
         
 };
 
@@ -46,9 +59,9 @@ void MaxHeap::MaxHeapify(int i)
     int l = Left(i);
     int r = Right(i);
     int largest;
-    if ( l < heapsize && heap[l] > heap[i] ) largest = l;
+    if ( l < heapsize && heap[l].key > heap[i].key ) largest = l;
     else largest = i;
-    if ( r < heapsize && heap[r] > heap[largest] ) largest = r;
+    if ( r < heapsize && heap[r].key > heap[largest].key ) largest = r;
     if ( largest != i )
     {
         Swap(i, largest);
@@ -61,7 +74,7 @@ void MaxHeap::BuildMaxHeap()
     for ( int i = heapsize/2-1; i >= 0; i-- ) MaxHeapify(i);
 }
 
-MaxHeap::MaxHeap(vector<int> &v)
+MaxHeap::MaxHeap(vector<HeapElement> &v)
 {
     heapsize = v.size();
     heap = v;
@@ -80,15 +93,61 @@ void MaxHeap::HeapSort()
     heapsize = heap.size();
 }
 
+void* MaxHeap::ExtractMax()
+{
+    if (heapsize < 1)
+    {
+        cout << "Heap underflow." << endl;
+        exit(EXIT_FAILURE);
+    } else {
+        void* max = heap[0].handle;
+        heap[0] = heap[heapsize-1];
+        heapsize--;
+        MaxHeapify(0);
+        return max;
+    }
+}
+
+void MaxHeap::IncreaseKey(int i, int newKey)
+{
+    if (heap[i].key >= newKey)
+    {
+        cout << "New key must be greater than current key." << endl;
+        exit(EXIT_FAILURE);
+    } else {
+        heap[i].key = newKey;
+        while (i > 0 && heap[i].key > heap[Parent(i)].key)
+        {
+            Swap(i, Parent(i));
+            i = Parent(i);
+        }
+    }
+}
+
+void MaxHeap::Insert(HeapElement &newElement)
+{
+    int key = newElement.key;
+    newElement.key = -1;
+    heapsize++;
+    if (heapsize > heap.size()) {
+        heap.push_back(newElement);
+    } else {
+        heap[heapsize-1] = newElement;
+    }
+    IncreaseKey(heapsize-1, key);
+}
+
 int main(int argc, char **argv)
 {
     // these two lines are the best way I've come up with for putting command line arguments
-    //  into a vector of integers
-    vector<int> args(argc-1);
-    for (int i=0; i < argc-1; i++) args[i] = atoi(argv[i+1]);
+    //  into a vector of HeapElements
+    vector<HeapElement> argHE(argc-1);
+    for (int i=0; i < argc-1; i++) argHE[i].key = atoi(argv[i+1]);
 
-    MaxHeap h = args; 
+    MaxHeap h = argHE; 
     h.HeapSort();
-    for (auto x: h.getheap()) cout << x << " "; 
+    for (auto x: h.getheap()) cout << x.key << " "; 
     cout << endl;
 }
+
+
