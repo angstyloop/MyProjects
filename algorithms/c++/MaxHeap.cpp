@@ -102,6 +102,7 @@ void* MaxHeap::ExtractMax()
     } else {
         void* max = heap[0].handle;
         heap[0] = heap[heapsize-1];
+        heap.pop_back(); //constant time; we need to remove extracted items or they show up after heapsort
         heapsize--;
         MaxHeapify(0);
         return max;
@@ -126,7 +127,9 @@ void MaxHeap::IncreaseKey(int i, int newKey)
 
 void MaxHeap::Insert(HeapElement &newElement)
 {
+    // save the element's key so we can set it to -1 for IncreaseKey
     int key = newElement.key;
+    // -1 is less than every possible key, so IncreaseKey won't break.
     newElement.key = -1;
     heapsize++;
     if (heapsize > heap.size()) {
@@ -142,11 +145,29 @@ int main(int argc, char **argv)
     // these two lines are the best way I've come up with for putting command line arguments
     //  into a vector of HeapElements
     vector<HeapElement> argHE(argc-1);
-    for (int i=0; i < argc-1; i++) argHE[i].key = atoi(argv[i+1]);
-
+    for (int i=0; i < argc-1; i++){
+        argHE[i].key = atoi(argv[i+1]);
+        argHE[i].handle = &(argHE[i].key); // setting handle (a void*) equal to the key address (an int*)
+                                           // just to test things out
+    } 
     MaxHeap h = argHE; 
+    HeapElement e;
+    e.key = 10;
+    int x = 100;
+    e.handle = &x;
+    h.Insert(e); 
+    for (int i=0; i<h.getheapsize(); i++) cout << *((int*)h.getheap()[i].handle) << " ";
+    cout << endl;
+    x++;
+    for (int i=0; i<h.getheapsize(); i++) cout << *((int*)h.getheap()[i].handle) << " ";
+    cout << endl;
+    cout << *((int*)h.Max()) << endl;
+    cout << *((int*)h.ExtractMax()) << endl;
+    cout << *((int*)h.Max()) << endl;
+    for (int i=0; i<h.getheapsize(); i++) cout << *((int*)h.getheap()[i].handle) << " ";
+    cout << endl;
     h.HeapSort();
-    for (auto x: h.getheap()) cout << x.key << " "; 
+    for (int i=0; i<h.getheapsize(); i++) cout << *((int*)h.getheap()[i].handle) << " ";
     cout << endl;
 }
 
