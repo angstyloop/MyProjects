@@ -10,7 +10,7 @@ using namespace std;
 
 struct HeapElement
 {
-    void *handle;   // points to an application object. remember void pointers must be explicitly cast.
+    void *handle;   // points to an application object. remember void pointers must be explicityly cast.
     int key;
 };
 
@@ -18,7 +18,7 @@ class MaxHeap
 {
     private:
         int heapsize;
-        vector<HeapElement *> heap;
+        vector<HeapElement> heap;
         
         static int Parent(int i);
         static int Left(int i);
@@ -26,7 +26,7 @@ class MaxHeap
 
         void Swap(int i, int j)
         {
-            HeapElement * c = heap[i];
+            HeapElement c = heap[i];
             heap[i] = heap[j];
             heap[j] = c;
         }
@@ -34,18 +34,18 @@ class MaxHeap
         void BuildMaxHeap();
         
     public:
-        MaxHeap(vector<HeapElement *> &);
+        MaxHeap(vector<HeapElement>&);
         void HeapSort();
         
         // getter methods for heap and heapsize
         int getheapsize() const {return heapsize;}
-        vector<HeapElement *> getheap() const {return heap;}
+        vector<HeapElement> getheap() const {return heap;}
 
         // these methods support usage of MaxHeap objects as priority queues
-        void* Max() {return heap[0]->handle;}
+        void* Max() {return heap[0].handle;}
         void* ExtractMax();
         void IncreaseKey(int i, int newKey);
-        void Insert(HeapElement* newElement);
+        void Insert(HeapElement &newElement);
         
         
 };
@@ -59,9 +59,9 @@ void MaxHeap::MaxHeapify(int i)
     int l = Left(i);
     int r = Right(i);
     int largest;
-    if ( l < heapsize && heap[l]->key > heap[i]->key ) largest = l;
+    if ( l < heapsize && heap[l].key > heap[i].key ) largest = l;
     else largest = i;
-    if ( r < heapsize && heap[r]->key > heap[largest]->key ) largest = r;
+    if ( r < heapsize && heap[r].key > heap[largest].key ) largest = r;
     if ( largest != i )
     {
         Swap(i, largest);
@@ -74,7 +74,7 @@ void MaxHeap::BuildMaxHeap()
     for ( int i = heapsize/2-1; i >= 0; i-- ) MaxHeapify(i);
 }
 
-MaxHeap::MaxHeap(vector<HeapElement*> &v)
+MaxHeap::MaxHeap(vector<HeapElement> &v)
 {
     heapsize = v.size();
     heap = v;
@@ -100,10 +100,9 @@ void* MaxHeap::ExtractMax()
         cout << "Heap underflow." << endl;
         exit(EXIT_FAILURE);
     } else {
-        void* max = heap[0]->handle;
-        delete heap[0]; //free the memory pointed to by the extracted pointer
-        heap[0] = heap[heapsize-1]; //copy the last pointer to the first
-        heap.pop_back(); //remove the old copy
+        void* max = heap[0].handle;
+        heap[0] = heap[heapsize-1];
+        heap.pop_back(); //constant time; we need to remove extracted items or they show up after heapsort
         heapsize--;
         MaxHeapify(0);
         return max;
@@ -112,13 +111,13 @@ void* MaxHeap::ExtractMax()
 
 void MaxHeap::IncreaseKey(int i, int newKey)
 {
-    if (heap[i]->key >= newKey)
+    if (heap[i].key >= newKey)
     {
         cout << "New key must be greater than current key." << endl;
         exit(EXIT_FAILURE);
     } else {
-        heap[i]->key = newKey;
-        while (i > 0 && heap[i]->key > heap[Parent(i)]->key)
+        heap[i].key = newKey;
+        while (i > 0 && heap[i].key > heap[Parent(i)].key)
         {
             Swap(i, Parent(i));
             i = Parent(i);
@@ -126,12 +125,12 @@ void MaxHeap::IncreaseKey(int i, int newKey)
     }
 }
 
-void MaxHeap::Insert(HeapElement* newElement)
+void MaxHeap::Insert(HeapElement &newElement)
 {
     // save the element's key so we can set it to -1 for IncreaseKey
-    int key = newElement->key;
+    int key = newElement.key;
     // -1 is less than every possible key, so IncreaseKey won't break.
-    newElement->key = -1;
+    newElement.key = -1;
     heapsize++;
     if (heapsize > heap.size()) {
         heap.push_back(newElement);
@@ -144,37 +143,32 @@ void MaxHeap::Insert(HeapElement* newElement)
 int main(int argc, char **argv)
 {
     // these two lines are the best way I've come up with for putting command line arguments
-    //  into a vector of HeapElement pointers.
-    vector<HeapElement *> argHE;
-    for (int i=0; i < argc-1; i++) argHE.push_back(new HeapElement);
+    //  into a vector of HeapElements
+    vector<HeapElement> argHE(argc-1);
     for (int i=0; i < argc-1; i++){
-        argHE[i]->key = atoi(argv[i+1]);
-        argHE[i]->handle = &(argHE[i]->key); // setting handle (a void*) equal to the key address (an int*)
-    }                                         // just to test things out
+        argHE[i].key = atoi(argv[i+1]);
+        argHE[i].handle = &(argHE[i].key); // setting handle (a void*) equal to the key address (an int*)
+                                           // just to test things out
+    } 
     MaxHeap h = argHE; 
-    for (int i=0; i<h.getheapsize(); i++) {
-        cout << "key: " << h.getheap()[i]->key << "\t" << "handle: " << *((int*)h.getheap()[i]->handle) << endl;
-    }
+    HeapElement e;
+    e.key = 10;
+    int x = 100;
+    e.handle = &x;
+    h.Insert(e); 
+    for (int i=0; i<h.getheapsize(); i++) cout << *((int*)h.getheap()[i].handle) << " ";
     cout << endl;
-    HeapElement* e = new HeapElement;
-    e->key = 3;
-    e->handle = &e->key;
-    h.Insert(e);
-    for (int i=0; i<h.getheapsize(); i++) {
-        cout << "key: " << h.getheap()[i]->key << "\t" << "handle: " << *((int*)h.getheap()[i]->handle) << endl;
-    }
-    
-    // The delete below will fail if h.heap contains degenerate pointers (ptrs that point to the same
-    // HeapElement object). This shouldn't happen in practice, since different HeapElements should have
-    // different keys, even if they contatain ptrs to the same application object. However, the modern
-    // workaround for this is to use shared_ptr<T> instead. Since you can't cast shared_ptr<void> to
-    // shared_ptr<int> the same way you can cast void* to anything, I'd have to modify  my hackney example
-    // to make HeapElement::handle a shared_ptr<int> specifically.
-    // Ideally I'd make an ApplicationObject class and then make HeapElement::handle a 
-    // shared_ptr<ApplicationObject>.
-    for (int i=0; i< h.getheap().size(); i++) {
-        delete h.getheap()[i];
-    }
+    x++;
+    for (int i=0; i<h.getheapsize(); i++) cout << *((int*)h.getheap()[i].handle) << " ";
+    cout << endl;
+    cout << *((int*)h.Max()) << endl;
+    cout << *((int*)h.ExtractMax()) << endl;
+    cout << *((int*)h.Max()) << endl;
+    for (int i=0; i<h.getheapsize(); i++) cout << *((int*)h.getheap()[i].handle) << " ";
+    cout << endl;
+    h.HeapSort();
+    for (int i=0; i<h.getheapsize(); i++) cout << *((int*)h.getheap()[i].handle) << " ";
+    cout << endl;
 }
 
 

@@ -3,8 +3,17 @@
 #include <cstdlib>
 using namespace std;
 
+struct HeapElement
+{
+    int key;
+    void * handle;
+};
 int main()
 {
-    cout << "Oops, looks like sigterm didn't actually terminate anything." << endl;
-    return 0;
+    int *p = new int;
+    int *q = p;
+    *p = 5;
+    *q = 4;
+    delete p;
+    //delete q;
 }
