@@ -45,13 +45,11 @@ def RQuickSort(A, p, r):
         QuickSort(A, p, q-1)
         QuickSort(A, q+1, r)
 
-"""
 # Everything should still work, but let's check again anyway.
 from sys import argv
 argNums = [int(x) for x in argv[1:]]
 RQuickSort(argNums,0,len(argNums)-1)
 print argNums
 
-"""
 
 # Good to go!
