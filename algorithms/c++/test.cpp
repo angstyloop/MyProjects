@@ -1,19 +1,13 @@
 #include <iostream>
-#include <vector>
-#include <cstdlib>
+#include <random>
 using namespace std;
 
-struct HeapElement
-{
-    int key;
-    void * handle;
-};
 int main()
 {
-    int *p = new int;
-    int *q = p;
-    *p = 5;
-    *q = 4;
-    delete p;
-    //delete q;
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<int> dis(1,5);
+    for (int i=0; i<10; i++) cout << dis(gen) << " ";
+    cout << endl;
+    return 0;
 }

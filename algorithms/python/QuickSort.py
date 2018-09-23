@@ -1,7 +1,7 @@
 # an implementation of quicksort. the last element is used as the pivot. later we'll randomize the pivot choice.
 
-# Partitions the subarray A[p..r] of A, using the last element A[r] as the pivot. Elements less than A[r]
-#   go to the left, greater than to the right.
+# Partitions the subarray A[p..r] of A, using the last element A[r] as the pivot. Elements less
+#   than A[r] go to the left, and elements greater than or equal to the pivot go to the right.
 # Runtime: O(n)
 def Partition(A, p, r):
     i = p-1
@@ -33,7 +33,7 @@ print argNums
 # Runtime: O(n)
 from random import random
 def RPartition(A, p, r):
-    i = int(len(A)*random()) #pick a random index
+    i = p + int((r-p+1)*random()) #pick a random index from [p..r]
     A[i],A[r] = A[r],A[i]    # ..and swap that element with the last one
     return Partition(A, p, r)       # ..then just call Partition!
 
@@ -48,7 +48,8 @@ def RQuickSort(A, p, r):
 # Everything should still work, but let's check again anyway.
 from sys import argv
 argNums = [int(x) for x in argv[1:]]
-RQuickSort(argNums,0,len(argNums)-1)
+#RQuickSort(argNums,0,len(argNums)-1)
+RPartition(argNums,0,len(argNums)-1)
 print argNums
 
 
