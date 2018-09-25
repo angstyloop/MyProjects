@@ -48,8 +48,7 @@ def RQuickSort(A, p, r):
 # Everything should still work, but let's check again anyway.
 from sys import argv
 argNums = [int(x) for x in argv[1:]]
-#RQuickSort(argNums,0,len(argNums)-1)
-RPartition(argNums,0,len(argNums)-1)
+RQuickSort(argNums,0,len(argNums)-1)
 print argNums
 
 

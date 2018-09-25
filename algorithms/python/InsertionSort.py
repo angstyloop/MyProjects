@@ -1,18 +1,20 @@
-# sorts and array, modifying the original array
+# Sorts a subarray A[p..r] in quadratic time. Usually faster than recursive sorting algorithms
+#   for small input size. "Small" depends on the machine but is usually between 7 and 50 elements.
+# Runtime: O(n^2)
 
-def insertion_sort(A):
-    for j in range(1,len(A)):
+def InsertionSort(A, p, r):
+    for j in range(p+1, r+1):
         key = A[j]
-        i = j - 1;
-        while i > 0 and A[i] > key:
+        i = j-1
+        while i>=p and A[i]>key:
             A[i+1] = A[i]
-            i-=1
+            i -= 1
         A[i+1] = key
 
-# test it out
-
-#A = [2,3,1,5,7,8,10]
-#insertion_sort(A)
-#print A
-
-
+"""
+#test it out
+from sys import argv
+A = [int(x) for x in argv[1:]]
+InsertionSort(A, 0, len(A)-1)
+print A
+"""

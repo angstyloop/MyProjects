@@ -41,11 +41,3 @@ def RSelect(A, p, r, i):
     else:
         return RSelect(A, q+1, r, i-k)
 
-# Let's test it out.
-from sys import argv
-i = int(argv[len(argv)-1])
-print "i: ", i
-A = [int(x) for x in argv[1:-1]]
-print "A: ", A
-x = RSelect(A, 0, len(A)-1, i)
-print "ith order statistic", x
