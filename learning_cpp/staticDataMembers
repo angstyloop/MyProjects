@@ -1,0 +1,32 @@
+// practice with static data members; modifying them with constructors and destructors
+#include <iostream>
+using namespace std;
+
+class Dummy {
+    public:
+        static int n;
+        Dummy() {++n;}
+        ~Dummy();
+};
+
+int Dummy::n = 0;
+
+Dummy::~Dummy()
+{
+    --n;
+}
+
+int main()
+{
+    Dummy a;
+    cout << a.n << endl;
+    Dummy* b = new Dummy[5];
+    cout << Dummy::n << endl;
+    Dummy* c = new Dummy;
+    cout << c->n << endl;
+    delete c; 
+    cout << Dummy::n << endl;
+    delete[] b;
+    cout << a.n << endl;
+    return 0;
+}
