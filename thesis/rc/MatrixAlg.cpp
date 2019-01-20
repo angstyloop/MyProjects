@@ -78,7 +78,7 @@ void Matrix::forwsub () {
     } 
 }
 
-Matrix Matrix::inv () {
+Matrix Matrix::inv_cholesky () {
     if (nrow!=ncol) {
         cout << "Matrix must be square." << endl;
         exit (EXIT_FAILURE);
@@ -91,11 +91,11 @@ Matrix Matrix::inv () {
     return N.T() * N; // since M= L*L.T; M.inv = L.T.inv*L.inv = N.T * N
 }
 
-int main() {
-    Matrix a(3,3);
-    a.input();
-    Matrix b = a.cholesky() * a;
-    b.print();    
-    return 0;
-}
 
+
+int main() {
+    Matrix a (3,3);
+    a.input();
+    a = a.inv_cholesky();
+    a.print();
+}

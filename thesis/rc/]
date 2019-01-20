@@ -13,6 +13,7 @@ class Matrix {
         const int nrow, ncol;
         // constructors
 
+        Matrix () = default;
         Matrix (int r, int c) : nrow(r), ncol(c) {
             M = new double*[nrow];
             for (int i=0; i<nrow ; ++i)
@@ -67,7 +68,8 @@ class Matrix {
         
         // move constructor
         Matrix (Matrix&& other) : nrow(other.nrow), ncol(other.ncol) {
-            swap(M, other.M);
+            M = other.M;
+            other.M = nullptr;
         }
 
         // move assignment
@@ -76,9 +78,11 @@ class Matrix {
                 cout << "Invalid move assignment - matrices must be the same size." << endl;
                 exit(EXIT_SUCCESS);
             } 
-            if (this != &other) {
-                swap(M, other.M); // no delete required here destructor will clean up the temporary
-            }  
+            for (int i=0; i<nrow; ++i)
+                delete[] M[i];
+            delete[] M;
+            M = other.M;
+            other.M = nullptr;
             return *this;
         }
 
