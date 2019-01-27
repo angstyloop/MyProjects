@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstring>
 #include <string>
 #include <locale>
 #include <sstream>
@@ -6,7 +7,7 @@
 #include <cmath>
 
 #define EPS 0.00001
-
+#define OFF 0.01
 // dynamically-allocated, real-valued matrix class
 template <class type>
 class Matrix {
@@ -113,16 +114,18 @@ class Matrix {
                 std::cout << "Invalid matrix multiplication: matrices don't fit." << std::endl;
                 exit(EXIT_FAILURE);
             }
-            Matrix P (nrow, ncol); //result
+            Matrix P (this->nrow, rhs.ncol); //result
             for (int i=0; i<nrow; ++i)   
-                for (int j=0; j<ncol; ++j) {
+                for (int j=0; j<rhs.ncol; ++j) {
                     P[i][j] = 0;
                     for (int k=0; k<rhs.nrow; ++k)
                         P[i][j] += M[i][k] * rhs.M[k][j]; 
                  } 
             return P;
         }  
-        
+       
+
+
         // delete multiplication assignment for matrices
         Matrix& operator*= (const Matrix& rhs) = delete;
 
@@ -313,18 +316,49 @@ Matrix<type> Identity(int n) {
     return temp;
 }
 
-template <class type>
-class Vector : public Matrix<type> {
+class Vector : public Matrix<double> {
     int length;
     public:
         //ctors
         Vector () : length(0) {};
-        Vector (int dim) : Matrix<type>(dim, 1), length(dim) {} // vectors are column  
+        Vector (int dim) : Matrix<double>(dim, 1), length(dim) {} // vectors are column  
+
         // copy ctor
-        Vector (const Vector& that) : Matrix<type>(that), length(that.nrow) {} 
+        Vector (const Vector& that) : Matrix<double>(that), length(that.nrow) {} 
         
+        // move assignment
+        Vector& operator= (Vector&& that) {
+            if (this!=&that) {
+                for (int i=0; i<length; ++i)
+                    delete[] M[i];
+                delete M;
+                M = that.M;
+                that.M = nullptr;
+            } 
+            return *this;
+        }
+
+        Vector& operator= (Matrix<double>&& that) {
+            Matrix<double>::operator=(that);
+            return *this;
+        }
+
+        // move ctor
+        Vector (Vector&& that) : Matrix(that.nrow, that.ncol) {
+            M = that.M;
+            that.M = nullptr;
+        }
+
+
+        // copy assignment
+        Vector& operator= (const Vector& that) {
+            for (int i=0; i<length; ++i)
+                M[i][0] = that.M[i][0];
+            return *this;
+        }
+
         //indices
-        type& operator[] (const int i) const;// { return M[i][0]; }
+        double& operator[] (const int i) const { return M[i][0]; }
 
         //dot product
         Vector operator*(Vector& that) {
@@ -344,23 +378,14 @@ class Vector : public Matrix<type> {
             return *this; 
         }
         const int& len() const {return length;}
+
+        // Matrix * vector multiplication
+        // define in Matrix class
 };
 
-// template specifications have to be out here b/c the template class Vector<type> can't see Matrix members
-//  until type is specified.
-template <>
-double& Vector<double>::operator[] (const int i) const {
-    return M[i][0]; 
-}
-
-template <>
-int& Vector<int>::operator[] (const int i) const {
-    return M[i][0];
-}
 
 // scalar multiplication (other side)
-template <class type>
-Vector<type> operator*(double c, Vector<type> v) { return v*c; }
+Vector operator*(double c, Vector v) { return v*c; }
 
 
 
@@ -485,25 +510,26 @@ void Matrix<double>::random(int dens) {
     //random_device rd;
     std::default_random_engine entry_gen(rd());
     std::uniform_real_distribution<> entry_dist (-1, 1);
-    auto rand_entry = bind(entry_dist, entry_gen);
+    // DISLIN doesn't like std::bind()
+    //auto rand_entry = std::bind(entry_dist, entry_gen);
 
     std::default_random_engine i_gen(rd());
     std::uniform_int_distribution<int> i_dist (0, nrow-1);
-    auto rand_i = bind(i_dist, i_gen);
+    //auto rand_i = std::bind(i_dist, i_gen);
 
     std::default_random_engine j_gen(rd());
     std::uniform_int_distribution<int> j_dist (0, ncol-1);
-    auto rand_j = bind(j_dist, j_gen);
+    //auto rand_j = std::bind(j_dist, j_gen);
     
     // initialize entries to zero
     zero();
     
     while (dens > 0) {
-        c = rand_entry();
+        c = entry_dist(entry_gen);
         if (abs(c) < EPS) continue; //re-roll if we get zero, since we're aiming for a spec. density
 
-        i = rand_i();
-        j = rand_j();
+        i = i_dist(i_gen);
+        j = j_dist(j_gen);
 
         if (M[i][j] < EPS) {
             M[i][j] = c;
@@ -564,7 +590,7 @@ void Matrix<double>::DenseRandom(int dens) {
     //random_device rd;
     std::default_random_engine gen(rd());
     std::uniform_real_distribution<double> dist(-1,1);
-    auto roll = bind(dist, gen); 
+    //auto roll = std::bind(dist, gen); 
 
     for (i=0; i<nrow; ++i) {    // Generate [i,j] pairs
         for (int j=0; j<ncol; ++j) {
@@ -576,7 +602,7 @@ void Matrix<double>::DenseRandom(int dens) {
     picked_pairs = RandomSelect<int*>(ij_pairs, p, picked_pairs, dens);
     // assign randomly from [-1,1] to each picked entry
     for (i=0; i<dens; ++i) {
-        M[picked_pairs[i][0]][picked_pairs[i][1]] = roll();
+        M[picked_pairs[i][0]][picked_pairs[i][1]] = dist(gen);
     }
 }
 
@@ -591,14 +617,14 @@ void Matrix<double>::GenerateSymmetricReservoir (Matrix<double>& Q, Matrix<doubl
     std::default_random_engine gen(rd());
 
     std::uniform_real_distribution<double> dist(-1,1);
-    auto roll = bind(dist, gen); 
+    //auto roll = std::bind(dist, gen); 
         
     double sum_sqrs; // to track the sum of squares of row entries so we can normalize rows
     for (int i=0; i<nrow; ++i) {
         sum_sqrs = 0;
         //// randomly assign entries to row i
         for (int j=0; j<ncol; ++j) {
-            Q[i][j] = i==j ? 0 : roll(); 
+            Q[i][j] = i==j ? 0 : dist(gen); 
             sum_sqrs += Q[i][j]*Q[i][j];
         }
         // normalize row i
@@ -607,15 +633,19 @@ void Matrix<double>::GenerateSymmetricReservoir (Matrix<double>& Q, Matrix<doubl
     }
 
     for (int i=0; i<nrow; ++i)
-        D[i][i] = roll();
+        D[i][i] = dist(gen);
 
     // use eigenfactorization to generate M
     *this = Q * D * Q.T();
 }
 
-
+Vector Offset (int dim) {
+    Vector temp (dim);
+    for (int i=0; i<dim; ++i)
+        temp[i]= OFF;
+    return temp;;
+}
 //goal: generate a random orthogonal matrix in O(n^3) time using Stewart's algorithm
-
 
 
 
