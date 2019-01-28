@@ -6,8 +6,8 @@
 #include <random>
 #include <cmath>
 
-#define EPS 0.00001
-#define OFF 0.01
+#define EPS 0.00000001
+#define OFF 1
 // dynamically-allocated, real-valued matrix class
 template <class type>
 class Matrix {
@@ -244,7 +244,7 @@ class Matrix {
         //  decomposition.
         Matrix cholesky();
 
-        void random(int); 
+        void random(int, double begin=-1, double end=1); 
 
         //set all entries to zero
         void zero();
@@ -492,14 +492,16 @@ void Matrix<type>::zero() {
         for (int j=0; j<ncol; ++j)
             M[i][j] = 0;
 }
-// randomly assigns real numbers in the interval [-1,1] to dens randomly selected
+// randomly assigns real numbers in the interval [begin, end] to dens randomly selected
 //  entries of a matrix. to get a randomly generated matrix, just make a new uninitialized matrix
 //  and call random(). if a real zero is randomly generated for the entry, random() re-rolls. 
 //  when a nonzero element is encountered, random() assumes that's an element
 //  we already placed and skips it without decrementing dens. this will on average contribute
 //  significantly to runtime as dens increases. however, for low dens, this should work fine.
+//
+//  begin and end are set to -1 and 1 by default.
 template <>
-void Matrix<double>::random(int dens) {
+void Matrix<double>::random(int dens, double begin, double end) {
     if (dens > ncol*nrow) {
         std::cout << "Density must not exceed the number of entries ..." << std::endl;
         exit(EXIT_FAILURE);
@@ -509,7 +511,7 @@ void Matrix<double>::random(int dens) {
 
     //random_device rd;
     std::default_random_engine entry_gen(rd());
-    std::uniform_real_distribution<> entry_dist (-1, 1);
+    std::uniform_real_distribution<> entry_dist (begin, end);
     // DISLIN doesn't like std::bind()
     //auto rand_entry = std::bind(entry_dist, entry_gen);
 

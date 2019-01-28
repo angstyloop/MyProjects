@@ -9,7 +9,7 @@ class DiscreteTimeSeries {
         virtual ~DiscreteTimeSeries () {if (series!=nullptr) delete[] series;}
         Vector& operator[] (const int);
         virtual void Map(void) =0; 
-            //series[prev] = series[curr];
+            //series[curr] = f (series[prev]);;
             //prev = curr++;=0
             
         void Wash (int);
@@ -19,6 +19,7 @@ class DiscreteTimeSeries {
         void SetCurr(int i) {curr = i;}
         void SetPrev(int i) {prev = i;}
         void Listen(void);
+        void PrintSeries();
 };
 
 Matrix<double> RidgeRegress(Matrix<double>, Matrix<double>, double);
@@ -35,6 +36,7 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void Train(void);
         void Observe(int[], int, int);
         void PrintW_out(void) {W_out.print();}
+        void PrintTr_Series(void);
 };
 
 class BakersMap : public DiscreteTimeSeries {
