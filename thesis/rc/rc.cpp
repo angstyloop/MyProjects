@@ -38,6 +38,7 @@ void DiscreteTimeSeries::PrintSeries() {
     }
 }
 
+
 // observes comps components for psteps steps with the others being continually provided.
 //   this approach works only in the artificial scenario where the series map is known.
 //   I still need to create a child of DiscreteTimeSeries to serve as a container for arbitrary

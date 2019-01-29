@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# compile the 1st command line argument $1 to a.out
+clang++ -std=c++11 -stdlib=libc++ -L/usr/local/opt/qt/lib -I/usr/local/opt/qt/include $1
+
+# run the output file with all the original command line arguments starting at $2
+./a.out `echo ${@:2}`
