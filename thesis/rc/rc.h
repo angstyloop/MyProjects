@@ -35,8 +35,9 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         //fill M with rowvectors obt
         void Train(void);
         void Observe(int[], int, int);
-        void PrintW_out(void) {W_out.print();}
+        void PrintW_out(void) {W_out.Print();}
         void PrintTr_Series(void);
+        void RidgeTrace(Matrix<double>**, int);
 };
 
 class BakersMap : public DiscreteTimeSeries {

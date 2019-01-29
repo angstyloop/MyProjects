@@ -34,7 +34,7 @@ void DiscreteTimeSeries::Listen () {
 
 void DiscreteTimeSeries::PrintSeries() {
     for (int i=0; i<steps; ++i) {
-        (*this)[i].T().print();     
+        (*this)[i].T().Print();     
     }
 }
 
@@ -144,9 +144,22 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _tr_series
           _tr_series = nullptr;
       }
 
+void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N) {
+    const int lim=10;
+    const double db = lim * 1.0 / N; 
+    b=0;
+
+    for (int i=0; i<N; ++i) {
+        Train();
+        // the thing pointed to by the pointer pointed to by (trace+i)
+        *trace[i] = W_out;
+        b+=db;
+    }
+}
+
 void EchoStateNetwork::PrintTr_Series (void) {
     for (int i=0; i<steps; ++i)
-        (*tr_series)[i].T().print();
+        (*tr_series)[i].T().Print();
 }
 
 void EchoStateNetwork::Map (void) { 
@@ -179,7 +192,7 @@ void EchoStateNetwork::Train(void) {
 int main() {
     Vector bm_start(2);
     bm_start.random(2,-.5,.5);
-    //bm_start.print();
+    //bm_start.Print();
     
     int steps=20, N=3;
     double a = 1./3;
@@ -189,7 +202,7 @@ int main() {
 
     Vector esn_start(N);
     esn_start.random(N, -.5,.5);
-    //esn_start.print();
+    //esn_start.Print();
 
     // polymorphism in action! esn takes a EchoStateNetwork*. bm is a BakersMap*, but BakersMap is
     //  a child of EchoStateNetwork, which is an abstract base class with pure virtual function Map()
@@ -201,11 +214,11 @@ int main() {
     esn.Listen();
     //esn.PrintSeries();
     //std::cout << std::endl;
-    esn.PrintTr_Series();
+    //esn.PrintTr_Series();
 
     std::cout << std::endl;
 
-    esn.Train();
+    //esn.Train();
 
     //works, just commenting out for now
     //esn.PrintW_out();
@@ -214,18 +227,33 @@ int main() {
     const int indices_length = 1;
     int indices[indices_length]= {0}; //observe the x component
 
-    esn.Observe(indices, indices_length, steps);
-    esn.PrintTr_Series();
+    //esn.Observe(indices, indices_length, steps);
+    //esn.PrintTr_Series();
 
     //make regression parameter b initiliazable via EchoStateNetwork ctr.
     
     // print ridge trace to pick b
     
+    // number of increments
+    int num_inc=50;
+    // allocate an array of Matrix pointers to hold the W_out's; delete later;
+    Matrix<double>** trace = new Matrix<double>*[num_inc]; 
+    
+    // get num_inc W_out's into trace 
+    esn.RidgeTrace(trace, num_inc);    
+    //iterate through trace and print each W_out
+    for (int i=0; i<num_inc; ++i) {
+        trace[i]->Print(); 
+        std::cout << std::endl;
+    }
+   
+
     // find a way to test 
 
-       
+      
 
 
     // clean up dyn. alloc. memory
-    //delete bm;
+    delete bm;
+    delete
 }

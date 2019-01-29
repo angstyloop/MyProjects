@@ -149,7 +149,7 @@ class Matrix {
         }
 
         // neatly print matrix on command line, with optional precision and spacing args
-        virtual void print (int precision = 5, int spacing = 2) const {
+        virtual void Print (int precision = 5, int spacing = 2) const {
             for (int i=0; i<nrow; ++i) {
                 for (int j=0; j<ncol; ++j)
                     printf("%.*f%*c", precision, M[i][j], spacing, ' ');
@@ -216,7 +216,7 @@ class Matrix {
             }
             // pass arr to fill and print the matrix
             fill(arr, r, c);
-            //print();
+            //Print();
             std::cout << std::endl;
         }
         
@@ -269,7 +269,7 @@ class AugMatrix : public Matrix<double> {
                 exit(EXIT_SUCCESS);
             }
         }
-        void print (int precision = 1, int spacing = 2) const {
+        void Print (int precision = 1, int spacing = 2) const {
             for (int i=0; i<nrow; ++i) {
                 for (int j=0; j<acol; ++j)
                     printf("%.*f%*c", precision, M[i][j], spacing, ' ');
