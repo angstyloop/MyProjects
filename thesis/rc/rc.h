@@ -37,6 +37,7 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void Observe(int[], int, int);
         void PrintW_out(void) {W_out.Print();}
         void PrintTr_Series(void);
+        Vector& Tr_Series(int i) {return (*tr_series)[i];}
         void RidgeTrace(Matrix<double>**, int);
 };
 

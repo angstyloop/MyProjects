@@ -39,42 +39,43 @@ void DiscreteTimeSeries::PrintSeries() {
 }
 
 
-// observes comps components for psteps steps with the others being continually provided.
+// observes comps components starting at index begin and continuing until the end of series is
+//   reached, with the other components being continually provided.
+//
 //   this approach works only in the artificial scenario where the series map is known.
 //   I still need to create a child of DiscreteTimeSeries to serve as a container for arbitrary
 //   input sequences.
-void EchoStateNetwork::Observe(int* comps, int L, int psteps) {
-
-    //demand psteps < steps so we don't need to reallocate
-    if (psteps<steps) {
-        std::cout << "Unable to observe more steps than are in the training series." 
-                  << " Consider reallocating or writing if you need a longer observation period."
-                  << std::endl;
+//
+void EchoStateNetwork::Observe(int* comps, int L, int begin) {
+    
+    // if begin >= steps, we won't observe anything! and we'll segfault.
+    if (begin>=steps) {
+        std::cout << "EchoStateNetwork::Observe: error: required begin < steps." << std::endl;
         exit(EXIT_FAILURE);
     }
-    //temp vars
-    int j; //this will hold index of component we're interested in observing
-    Vector v(tr_series->Dim()); //this will hold approximations to input vectors
 
-    (*this)[0] = (*this)[prev];             //move the last reservoir state to the start of the series
-    (*tr_series)[0] = tr_series->Prev();    //do the same for the training series
+    //this will hold index of component we're interested in observing
+    int j; 
+    //this will hold approximations to input vectors
+    Vector v(tr_series->Dim()); 
 
-    //reset training series indices
-    tr_series->SetCurr(1);       
-    tr_series->SetPrev(0);        
+    //set training and reservoir series indices so that we start observing at index begin
+    tr_series->SetCurr(begin+1);       
+    tr_series->SetPrev(begin);        
+    curr = begin+1;   
+    prev = begin;  
 
-    //reset reservoir series indices
-    curr = 1;   
-    prev = 0;  
-
-    // populate the series, swapping out the appropriate components of the input vectors after each step
-    while (curr<psteps) {
-        Map(); //remember, this increments curr and thus controls the loop
+    // populate the series, swapping out the appropriate components of the input vectors
+    //  after each step
+    while (curr<steps) {
+        //remember, this increments curr and thus controls the loop
+        Map(); 
         // replace whatever components with those from W_out * reservoir_state
         for (int i=0; i<L; ++i) {
-            j = comps[i]; // index of a particular component
-            v = W_out * (*this)[prev]; //generate approximation to the previous input vector
-    
+            // index of a particular component
+            j = comps[i]; 
+            //generate approximation to the previous input vector
+            v = W_out * (*this)[prev]; 
             //helpful error message
             if (v.len()!=tr_series->Prev().len()) {
                 std::cout << "Observe(): invalid Vector assignment. Wrong lengths." << std::endl;
@@ -82,9 +83,9 @@ void EchoStateNetwork::Observe(int* comps, int L, int psteps) {
             }
 
             tr_series->Prev()[j] = v[j]; //sub in the approximated components for the corresponding
-                                          // components in the previous input vector, which will be used
-                                          // to generate a new current input vector next time we call
-                                          // Map().
+                                          // components in the previous input vector, which will be 
+                                          // used to generate a new current input vector next time we 
+                                          // call Map().
         } 
     }
 }
@@ -194,7 +195,7 @@ int main() {
     bm_start.random(2,-.5,.5);
     //bm_start.Print();
     
-    int steps=20, N=3;
+    int steps=100, N=3;
     double a = 1./3;
 
     //bm will be an argument to esn, be sure to delete later
@@ -206,54 +207,88 @@ int main() {
 
     // polymorphism in action! esn takes a EchoStateNetwork*. bm is a BakersMap*, but BakersMap is
     //  a child of EchoStateNetwork, which is an abstract base class with pure virtual function Map()
-
-    // change ESN ctr to let you pick the starting point. that way we can compare real inputs
-    //  to observed ones
     EchoStateNetwork esn (esn_start, bm, steps);
 
     esn.Listen();
     //esn.PrintSeries();
     //std::cout << std::endl;
     //esn.PrintTr_Series();
+    //std::cout << std::endl;
 
-    std::cout << std::endl;
+    // save the x inputs to compare to observed
+    double actual_x[steps];
+    for (int i=0; i<steps; ++i)
+        actual_x[i] = (esn.Tr_Series(i))[0];
 
-    //esn.Train();
+    //////////////////////////////////////////
+    //// Testing EchoStateNetwork::Train()////
+    //////////////////////////////////////////
+
+    esn.Train();
 
     //works, just commenting out for now
     //esn.PrintW_out();
 
+    /////////////////////////////////////////////
+    //// Testing EchoStateNetwork::Observe() ////
+    /////////////////////////////////////////////
+    
     // indices is an array of indices of input vectors that we want to observe
     const int indices_length = 1;
     int indices[indices_length]= {0}; //observe the x component
 
-    //esn.Observe(indices, indices_length, steps);
-    //esn.PrintTr_Series();
+    // start observing at the middle step
+    esn.Observe(indices, indices_length, steps/2-1);
 
-    //make regression parameter b initiliazable via EchoStateNetwork ctr.
+    // save the new tr_series (with observed inputs)
+    double obs_x[steps];
+    for (int i=0; i<steps; ++i)
+        obs_x[i] = (esn.Tr_Series(i))[0];
+
+    // starting at steps/2-1 print the actual and observed x values side by side
+    for (int i=steps/2-1; i<steps; ++i) {
+        //std::cout << actual_x[i] << "              " << obs_x[i] << std::endl;
+        ;
+    }
     
-    // print ridge trace to pick b
+    ////////////////////////////
+    //// Testing RidgeTrace ////
+    ////////////////////////////
+    
+    // goal: print ridge trace to facilitate the selection of b
     
     // number of increments
-    int num_inc=50;
+    //int num_inc=50;
+
     // allocate an array of Matrix pointers to hold the W_out's; delete later;
-    Matrix<double>** trace = new Matrix<double>*[num_inc]; 
-    
+    //Matrix<double>** trace = new Matrix<double>*[num_inc]; 
+    //for (int i=0; i<num_inc; ++i)
+    //    trace[i] = new Matrix<double>(2, N); // dimensions of W_out:
+                                             //(input_dimension, reservoir_dimension)
+
     // get num_inc W_out's into trace 
-    esn.RidgeTrace(trace, num_inc);    
+    //esn.RidgeTrace(trace, num_inc);    
+
     //iterate through trace and print each W_out
-    for (int i=0; i<num_inc; ++i) {
-        trace[i]->Print(); 
-        std::cout << std::endl;
-    }
+    //for (int i=0; i<num_inc; ++i) {
+        //trace[i]->Print(); 
+        //std::cout << std::endl;
+    //    ;
+    //}
    
-
-    // find a way to test 
-
+    // it prints! now we need to get make an array for each entry in W_out
+    // lets make an array of these arrays (we're flattening out W_out over 50 b steps)
+    //double** W_out_entries = new double*[2 * N]; // [input_dim * res_dim]
+    //for (int i=0; i<2*N; ++i) {
+    //    W_out_entries[i] = new double[num_inc];
+    //}
       
-
+    // each of these arrays we can feed to our dislin routine. hopefully we can get them all plotted
+    //  on the same graph
 
     // clean up dyn. alloc. memory
     delete bm;
-    delete
+    //delete[] trace;
+    //for (int i=0; i<num_inc;++i)
+    //    delete trace[i];
 }
