@@ -8,6 +8,8 @@
 #include <cmath>
 
 #define OFF .01
+#define EPS .000000001
+#define HT_LIM
 
 // dynamically-allocated, real-valued matrix class
 template <class type>
@@ -171,6 +173,13 @@ class Matrix {
                     M[i][j] = arr[i][j];
         }
 
+        // fill with a constant instead
+        void Fill (double d) {
+            for (int i=0; i<nrow; ++i)
+                for (int j=0; j<ncol; ++j)
+                    M[i][j] = d;
+        }
+
         // lets user input a matrix at the command line. ignores non-numeric entries
         //  as well those exceeding the number of columns.
         void input () {
@@ -216,7 +225,7 @@ class Matrix {
                 }
             }
             // pass arr to fill and print the matrix
-            fill(arr, r, c);
+            Fill(arr, r, c);
             //Print();
             std::cout << std::endl;
         }
@@ -239,8 +248,10 @@ class Matrix {
 
         void backsub(); 
         void forwsub();
+
         // inverse of a positive-definite real matrix (if it exists).
         Matrix inv_cholesky();
+
         // converts (symmetric) M in place into the lower triangular matrix of the cholesky
         //  decomposition.
         Matrix cholesky();
@@ -253,7 +264,11 @@ class Matrix {
         void DenseRandom(int);
 
         void GenerateSymmetricReservoir (Matrix&, Matrix&, double);
-};
+
+        // spectral radius: the largest eigenvalue. calculated with power iteration.
+        double SpectRad (void); 
+
+}; //end of Matrix<type> class
 
 //concatenate two matrices L and R
 template <class type>
@@ -357,7 +372,8 @@ class Vector : public Matrix<double> {
                 M[i][0] = that.M[i][0];
             return *this;
         }
-
+        
+        // uses Matrix Fill
         void Fill (double* arr, int r) {
             double** temp = new double*[r];
             for (int i=0; i<r; ++i)
@@ -366,12 +382,22 @@ class Vector : public Matrix<double> {
                 temp[r][1] = arr[i];
             Matrix<double>::Fill(temp, r, 1);
         }
-
+        
+        // uses matrix fill
+        void Fill (double d) {
+            double** temp = new double*[length];
+            for (int i=0; i<length; ++i) {
+                temp[i] = new double[1];
+                temp[i][1] = d;
+            }
+            Matrix<double>::Fill(temp, length, 1);
+        }
+        
         //indices
         double& operator[] (const int i) const { return M[i][0]; }
 
         //dot product
-        Vector operator*(Vector& that) {
+        double operator*(Vector& that) {
             if (this->length != that.length) {
                 std::cout << "Dot product needs two vectors of the same length..." << std::endl; 
                 exit(EXIT_SUCCESS);
@@ -381,6 +407,12 @@ class Vector : public Matrix<double> {
                 sum += (*this)[i] * that[i];
             return sum;
         }
+
+        //norm
+        double Norm (void) { 
+            return sqrt( (*this) * (*this) ); 
+        }
+
         // scalar multiplication
         Vector operator*(double c) {
             Vector v = *this;
@@ -389,8 +421,7 @@ class Vector : public Matrix<double> {
         }
         const int& len() const {return length;}
 
-        // Matrix * vector multiplication
-        // define in Matrix class
+            
 };
 
 
@@ -658,7 +689,43 @@ Vector Offset (int dim) {
         temp[i]= OFF;
     return temp;;
 }
-//goal: generate a random orthogonal matrix in O(n^3) time using Stewart's algorithm
+
+//future goal: generate a random orthogonal matrix in O(n^3) time using Stewart's algorithm
 
 
+// spectral radius: the largest eigenvalue. calculated with power iteration.
+template<>
+double Matrix<double>::SpectRad (void) {
+    //define convergence with a small float eps
+    //vectors prev and curr
+    //pick curr random
+    // do {
+        // normalize curr
+        //prev = curr; 
+        //curr = (*this)*prev
+        // eig = prev * curr / (prev*prev)
+        // } while (|prev-curr| > eps)
+    // defines convergence
+    double eps = .0001, prev_eig, curr_eig;
+    // temp storage
+    Vector prev(ncol), curr(ncol);
+    // random first vector
+    curr.random(ncol);
+    // set first eig to double max so the loop won't end after one iteration
+    curr_eig = DBL_MAX;
+    // iterate until cvg (when eigenvalue doesnt change more than eps)
+    do {
+        //normalize; scalar multiplication is defined in Vector
+        curr = 1/curr.Norm()*curr;
+        prev = curr;
+        prev_eig = curr_eig;
+        // matrix * vector  multiplication
+        curr = (*this)*prev;
+        // store the potential eigenvalue; these are dot products
+        curr_eig = (prev*curr) / (prev*prev);
+
+    } while (abs(curr_eig - prev_eig) > eps);
+
+    return curr_eig;
+}
 

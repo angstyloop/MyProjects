@@ -12,10 +12,12 @@ class DiscreteTimeSeries {
             //series[curr] = f (series[prev]);;
             //prev = curr++;=0
             
-        void Wash (int);
+        virtual void Wash (int);
         const int& Dim() const {return d;}
         const Vector& Curr() {return (*this)[curr];}
         const Vector& Prev() {return (*this)[prev];}
+        int CurrIndex () {return curr;}
+        int PrevIndex () {return prev;}
         void SetCurr(int i) {curr = i;}
         void SetPrev(int i) {prev = i;}
         void Listen(void);
@@ -34,11 +36,13 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void Map(void);
         //fill M with rowvectors obt
         void Train(void);
-        void Observe(int[], int, int);
+        void Observe(int[], int);
         void PrintW_out(void) {W_out.Print();}
         void PrintTr_Series(void);
         Vector& Tr_Series(int i) {return (*tr_series)[i];}
         void RidgeTrace(Matrix<double>**, int);
+        void Wash(int);
+
 };
 
 class BakersMap : public DiscreteTimeSeries {

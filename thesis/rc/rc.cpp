@@ -1,6 +1,8 @@
 #include "rc.h"
 #include <iostream>
 
+#define HT_EPS .0001
+
 // DiscreteTimeSeries class method definitions
 
 // constructor
@@ -39,16 +41,17 @@ void DiscreteTimeSeries::PrintSeries() {
 }
 
 
-// observes comps components starting at index begin and continuing until the end of series is
+// observes comps components starting at index curr and continuing until the end of series is
 //   reached, with the other components being continually provided.
 //
 //   this approach works only in the artificial scenario where the series map is known.
 //   I still need to create a child of DiscreteTimeSeries to serve as a container for arbitrary
 //   input sequences.
 //
-void EchoStateNetwork::Observe(int* comps, int L, int begin) {
-    
-    // if begin >= steps, we won't observe anything! and we'll segfault.
+void EchoStateNetwork::Observe(int* comps, int L) {
+    int begin = prev;
+
+    // note if prev >= steps, we won't observe anything! and we'll segfault.
     if (begin>=steps) {
         std::cout << "EchoStateNetwork::Observe: error: required begin < steps." << std::endl;
         exit(EXIT_FAILURE);
@@ -63,7 +66,6 @@ void EchoStateNetwork::Observe(int* comps, int L, int begin) {
     tr_series->SetCurr(begin+1);       
     tr_series->SetPrev(begin);        
     curr = begin+1;   
-    prev = begin;  
 
     // populate the series, swapping out the appropriate components of the input vectors
     //  after each step
@@ -88,16 +90,33 @@ void EchoStateNetwork::Observe(int* comps, int L, int begin) {
                                           // call Map().
         } 
     }
+    // reset the hidden indices, so we can graph real vs. observed starting at begin+1.
+    prev = begin;
+    curr = prev + 1;
 }
 
 // wash out the first n points in series
 void DiscreteTimeSeries::Wash (int n) {
-    Vector** temp = new Vector*[steps-n]; //reallocate
-    for (int i=n; i<steps; ++i) //transfer
-        *temp[i] = *(series[i]);
-    delete[] series; //clean up
-    series = temp; //move pointer
-    temp = nullptr;
+
+    // move the last steps-n vectors to the front of series
+    for (int i=0; i<steps-n; ++i) 
+        *(series[i]) = *(series[n+i]);
+
+    // make a zero vector
+    Vector temp(d);
+    temp.Fill(0);
+
+    // zero out the remaining n vectors
+    for (int i=steps-n; i<steps; ++i)
+        *(series[i]) = temp;
+
+    // set curr to the index of the first zeroed vector
+    curr = steps-n;
+    
+    // set prev just before that
+    prev = curr-1;
+    
+    //now the indices are ready for an Observe() call
 }
 
 // BakersMap class method definitions
@@ -121,12 +140,19 @@ void BakersMap::Map (void) {
 }
 
 // vector hyperbolic tangent
-Vector tanh(Vector v) {
+Vector& tanh(Vector& v) {
     for (int i=0; i<v.len(); ++i)
         v[i] = tanh(v[i]);
     return v;
 }
 
+// inverse vector hyperbolic tangent
+Vector atanh(const Vector& v) {
+    Vector temp(v.len());
+    for (int i=0; i<v.len(); ++i)
+        temp[i] = atanh(v[i]);
+    return temp;
+}
 
 // EchoStateNetwork class defs
 
@@ -142,7 +168,7 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _tr_series
       , b (.01) // seems like a fine value for the ridge regression parameter
       {
           W_in.random(W_in.ncol*W_in.nrow/2,-1, 1); // use density = half the entries
-          W.random(100,-1,1); //the densty really influences the cholesky and fwsub algorithms
+          W.random(floor(W.ncol*W.nrow/3),-1,1); //the densty really influences the cholesky and fwsub algorithms
           //W_in.Print();
           //W.Print();
           _tr_series = nullptr;
@@ -159,6 +185,11 @@ void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N) {
         *trace[i] = W_out;
         b+=db;
     }
+}
+
+void EchoStateNetwork::Wash(int n) {
+    DiscreteTimeSeries::Wash(n);
+    tr_series->DiscreteTimeSeries::Wash(n);
 }
 
 void EchoStateNetwork::PrintTr_Series (void) {
@@ -216,11 +247,11 @@ int main() {
     bm_start.random(2,-.5,.5);
     //bm_start.Print();
     
-    int steps=200, N=100;
+    int steps=15, N=50;
     double a = 1./3;
 
     //bm will be an argument to esn, be sure to delete later
-    //DiscreteTimeSeries* bm = new BakersMap(bm_start, steps, a);
+    DiscreteTimeSeries* bm = new BakersMap(bm_start, steps, a);
 
     /////////////////////////////////
     //// Testing Scalar Function ////
@@ -229,10 +260,7 @@ int main() {
     // let's use the sin function instead of bakers map
     double (*f)(double);
     f = sin;
-    ScalarFunction sin_func(f, 0, steps);  
-
-
-
+    ScalarFunction (f, 0, steps);  
 
     Vector esn_start(N);
     esn_start.random(N, -1,1);
@@ -240,10 +268,19 @@ int main() {
 
     // polymorphism in action! esn takes a EchoStateNetwork*. bm is a BakersMap*, but BakersMap is
     //  a child of EchoStateNetwork, which is an abstract base class with pure virtual function Map()
-    EchoStateNetwork esn (esn_start, &sin_func/*bm*/, steps);
+
+    DiscreteTimeSeries* sine = new ScalarFunction(sin, 0, steps);
+
+    EchoStateNetwork esn (esn_start, bm/*sine*/, steps);
 
     esn.Listen();
+
+    ////////////////////////////
+    //// Tested Wash()      ////
+    ////////////////////////////
+    //esn.Wash(2);
     //esn.PrintSeries();
+
     //std::cout << std::endl;
     esn.PrintTr_Series();
     //std::cout << std::endl;
@@ -257,7 +294,7 @@ int main() {
     //// Testing EchoStateNetwork::Train()////
     //////////////////////////////////////////
 
-    //esn.Train();
+    esn.Train();
 
     //works, just commenting out for now
     //esn.PrintW_out();
@@ -270,25 +307,26 @@ int main() {
     const int indices_length = 1;
     int indices[indices_length]= {1}; //observe the x component
 
-    // start observing at the middle step
-    //esn.Observe(indices, indices_length, steps/2-1);
+    // starts observing at index curr, which is where Wash() leaves off
+    esn.Observe(indices, indices_length);
 
     // save the new tr_series (with observed inputs)
     double obs_x[steps];
     for (int i=0; i<steps; ++i)
-        obs_x[i] = (esn.Tr_Series(i))[1];
+        obs_x[i] = (esn.Tr_Series(i))[0];
 
-    // starting at steps/2-1 print the actual and observed x values side by side
-    for (int i=steps/2-1; i<steps; ++i) {
-        std::cout << actual_x[i] << "              " << obs_x[i] << std::endl;
-        ;
-    }
-   
+    //  print the actual and observed x values side by side
+    //for (int i=esn.CurrIndex; i<steps; ++i) {
+    //    std::cout << actual_x[i] << "              " << obs_x[i] << std::endl;
+    //    ;
+    //}
+  
+    //do something with the actual and observed xvalues with DISLIN
 
 
     ////////////////////////////
     //// Testing RidgeTrace ////
-    ////////////////////////////
+    /////////////////////////////
     
     // goal: print ridge trace to facilitate the selection of b
     
@@ -326,4 +364,5 @@ int main() {
     //delete[] trace;
     //for (int i=0; i<num_inc;++i)
     //    delete trace[i];
+    delete sine;
 }
