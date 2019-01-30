@@ -105,16 +105,16 @@ void BakersMap::Map (void) {
     using namespace std;
     const double& x=(*this)[prev][0], y=(*this)[prev][1], a=param;
     Vector temp(2);
-    //if (x<-.5 || x>.5 || y<-.5 || y>.5) {
-    //    std::cout << "BakersMap: Domain Error: domain is the unit square centered at (0,0)." << std::endl;
-    //    exit(EXIT_FAILURE);
-    //}
+    if (x<-.5 || x>.5 || y<-.5 || y>.5) {
+        std::cout << "BakersMap: Domain Error: domain is the unit square centered at (0,0)." << std::endl;
+        exit(EXIT_FAILURE);
+    }
     if (x>0) {
-        temp[0] = (2*(x+.5)-1)-.5;
-        temp[1] = (a*(y+.5)+.5)-.5;
+        temp[0] = 2*x-.5; 
+        temp[1] = a*(y+.5);
     } else {
-        temp[0] = (2*(x+.5))-.5;
-        temp[1] = (a*(y+.5))-.5;
+        temp[0] = 2*x+.5;
+        temp[1] = a*(y+.5)-.5;
     }
     (*this)[curr] = temp;
     prev = curr++;
@@ -126,6 +126,7 @@ Vector tanh(Vector v) {
         v[i] = tanh(v[i]);
     return v;
 }
+
 
 // EchoStateNetwork class defs
 
@@ -140,8 +141,10 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _tr_series
       , offset (Offset(this->Dim()))
       , b (.01) // seems like a fine value for the ridge regression parameter
       {
-          W_in.random(W_in.ncol*W_in.nrow/2); // use density = half the entries
-          W.random(W.ncol*W.nrow/2);
+          W_in.random(W_in.ncol*W_in.nrow/2,-1, 1); // use density = half the entries
+          W.random(100,-1,1); //the densty really influences the cholesky and fwsub algorithms
+          //W_in.Print();
+          //W.Print();
           _tr_series = nullptr;
       }
 
@@ -189,30 +192,60 @@ void EchoStateNetwork::Train(void) {
     W_out = RidgeRegress(T, M, b);
 }
 
+
+/////////////////////////////////////////////
+////       ScalarFunction class methods  ////
+/////////////////////////////////////////////
+
+//constructor defined in rc.h
+
+// pure virtual in base class
+void ScalarFunction::Map(void) {
+    const double start = (*this)[0][0];
+    (*this)[curr][0] = f(start + curr * stp_sz);
+    prev = curr++;
+}
+
+///////////////////////////////////////////
+////////////////////////////////////////////
+// Tag &&&
+//
 // Driver program to test everything. Comment this out and leave it when finished testing.
 int main() {
     Vector bm_start(2);
     bm_start.random(2,-.5,.5);
     //bm_start.Print();
     
-    int steps=100, N=3;
+    int steps=200, N=100;
     double a = 1./3;
 
     //bm will be an argument to esn, be sure to delete later
-    DiscreteTimeSeries* bm = new BakersMap(bm_start, steps, a);
+    //DiscreteTimeSeries* bm = new BakersMap(bm_start, steps, a);
+
+    /////////////////////////////////
+    //// Testing Scalar Function ////
+    /////////////////////////////////
+
+    // let's use the sin function instead of bakers map
+    double (*f)(double);
+    f = sin;
+    ScalarFunction sin_func(f, 0, steps);  
+
+
+
 
     Vector esn_start(N);
-    esn_start.random(N, -.5,.5);
+    esn_start.random(N, -1,1);
     //esn_start.Print();
 
     // polymorphism in action! esn takes a EchoStateNetwork*. bm is a BakersMap*, but BakersMap is
     //  a child of EchoStateNetwork, which is an abstract base class with pure virtual function Map()
-    EchoStateNetwork esn (esn_start, bm, steps);
+    EchoStateNetwork esn (esn_start, &sin_func/*bm*/, steps);
 
     esn.Listen();
     //esn.PrintSeries();
     //std::cout << std::endl;
-    //esn.PrintTr_Series();
+    esn.PrintTr_Series();
     //std::cout << std::endl;
 
     // save the x inputs to compare to observed
@@ -224,7 +257,7 @@ int main() {
     //// Testing EchoStateNetwork::Train()////
     //////////////////////////////////////////
 
-    esn.Train();
+    //esn.Train();
 
     //works, just commenting out for now
     //esn.PrintW_out();
@@ -235,22 +268,24 @@ int main() {
     
     // indices is an array of indices of input vectors that we want to observe
     const int indices_length = 1;
-    int indices[indices_length]= {0}; //observe the x component
+    int indices[indices_length]= {1}; //observe the x component
 
     // start observing at the middle step
-    esn.Observe(indices, indices_length, steps/2-1);
+    //esn.Observe(indices, indices_length, steps/2-1);
 
     // save the new tr_series (with observed inputs)
     double obs_x[steps];
     for (int i=0; i<steps; ++i)
-        obs_x[i] = (esn.Tr_Series(i))[0];
+        obs_x[i] = (esn.Tr_Series(i))[1];
 
     // starting at steps/2-1 print the actual and observed x values side by side
     for (int i=steps/2-1; i<steps; ++i) {
-        //std::cout << actual_x[i] << "              " << obs_x[i] << std::endl;
+        std::cout << actual_x[i] << "              " << obs_x[i] << std::endl;
         ;
     }
-    
+   
+
+
     ////////////////////////////
     //// Testing RidgeTrace ////
     ////////////////////////////
@@ -287,7 +322,7 @@ int main() {
     //  on the same graph
 
     // clean up dyn. alloc. memory
-    delete bm;
+    //delete bm;
     //delete[] trace;
     //for (int i=0; i<num_inc;++i)
     //    delete trace[i];

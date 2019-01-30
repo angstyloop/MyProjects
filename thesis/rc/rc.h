@@ -73,5 +73,26 @@ Matrix<double> RidgeRegress(Matrix<double> T, Matrix<double> M, double b) {
      exit (EXIT_FAILURE);  
  }
 
+// convert a double to a 1-d Vector
+ const Vector DoubleToVector(double d) {
+    Vector* v = new Vector(1);
+    (*v)[0] = d;
+    return *v;
+ }
 
+// a generic class for functions of a single variable like sin(x)
+class ScalarFunction : public DiscreteTimeSeries {
+    // step size for generating {sin(i*stp_z)}
+    double stp_sz=.1;
+    // generating function
+    double (*f)(double);
+    public:
+        // constructor takes a function pointer and initializes base class
+        ScalarFunction (double (*_f)(double), double _start, int _steps) 
+            : DiscreteTimeSeries(DoubleToVector(_start), _steps)
+              , f (_f) {}
+
+        // pure virtual in DiscreteTimeSeries
+        void Map(void);            
+};
 

@@ -1,3 +1,4 @@
+#include <cfloat>
 #include <iostream>
 #include <cstring>
 #include <string>
@@ -6,8 +7,8 @@
 #include <random>
 #include <cmath>
 
-#define EPS 0.00000001
-#define OFF 1
+#define OFF .01
+
 // dynamically-allocated, real-valued matrix class
 template <class type>
 class Matrix {
@@ -159,7 +160,7 @@ class Matrix {
         
         // fill a matrix from a dynamic 2d array of type values. must specify dimensions
         //  of the array for safety.
-        void fill (type** arr, int r, int c) {
+        void Fill (type** arr, int r, int c) {
             if ( r!=nrow || c!=ncol ) {
                 std::cout << "Invalid fill - input wrong size." << std::endl;
                 exit(EXIT_FAILURE);
@@ -357,6 +358,15 @@ class Vector : public Matrix<double> {
             return *this;
         }
 
+        void Fill (double* arr, int r) {
+            double** temp = new double*[r];
+            for (int i=0; i<r; ++i)
+                temp[i] = new double[1];
+            for (int i=0; i<r; ++i)
+                temp[r][1] = arr[i];
+            Matrix<double>::Fill(temp, r, 1);
+        }
+
         //indices
         double& operator[] (const int i) const { return M[i][0]; }
 
@@ -416,18 +426,19 @@ void Matrix<type>::rswap (int i, int j) {
 
 // wrapper for sqrt function gives an error if the arg is negative
 double Sqrt(double x) {
-    if (x>=0)
-        return sqrt(x);
-    else {
-        std::cout << "Square root of negative number encountered. Exiting." << std::endl;
+    if (x<0) {
+        std::cout << "Square root of negative number" << x << " encountered. Exiting." << std::endl;
         exit(EXIT_FAILURE);
     }
+    else return sqrt(x);
 }
 // cholesky lower triangular matrix. can easily do in place, but we need an output.
+// only works for positive-semidefinite matrices. will only work for ridge regression
+// if M has no nonnegative entries.
 template <>
 Matrix<double> Matrix<double>::cholesky () {
     if (nrow != ncol) {
-        std::cout << "Need a pos. def. real symmetric matrix." << std::endl;
+        std::cout << "Need a pos. semidef. real symmetric matrix." << std::endl;
         exit(EXIT_SUCCESS);
     }
     double sum;
@@ -462,7 +473,7 @@ template <>
 void Matrix<double>::forwsub () {
     int i,k;
     for (i=0; i<nrow; ++i) {
-        if (M[i][i] < EPS) {
+        if (M[i][i] < DBL_MIN) {
             std::cout << "Encountered zero on diagonal. System not invertible." << std::endl;
             exit(EXIT_FAILURE);
         }
@@ -528,12 +539,12 @@ void Matrix<double>::random(int dens, double begin, double end) {
     
     while (dens > 0) {
         c = entry_dist(entry_gen);
-        if (abs(c) < EPS) continue; //re-roll if we get zero, since we're aiming for a spec. density
+        if (abs(c) < DBL_MIN) continue; //re-roll if we get zero, since we're aiming for a spec. density
 
         i = i_dist(i_gen);
         j = j_dist(j_gen);
 
-        if (M[i][j] < EPS) {
+        if (M[i][j] < DBL_MIN) {
             M[i][j] = c;
             --dens;
         }
