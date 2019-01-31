@@ -266,7 +266,7 @@ class Matrix {
         void GenerateSymmetricReservoir (Matrix&, Matrix&, double);
 
         // spectral radius: the largest eigenvalue. calculated with power iteration.
-        double SpectRad (void); 
+        double LargEigvl (void); 
 
 }; //end of Matrix<type> class
 
@@ -341,7 +341,7 @@ class Vector : public Matrix<double> {
 
         // copy ctor
         Vector (const Vector& that) : Matrix<double>(that), length(that.nrow) {} 
-        
+      
         // move assignment
         Vector& operator= (Vector&& that) {
             if (this!=&that) {
@@ -367,7 +367,7 @@ class Vector : public Matrix<double> {
 
 
         // copy assignment
-        Vector& operator= (const Vector& that) {
+        Vector& operator= (Vector& that) {
             for (int i=0; i<length; ++i)
                 M[i][0] = that.M[i][0];
             return *this;
@@ -424,6 +424,14 @@ class Vector : public Matrix<double> {
             
 };
 
+// Matrix * vector multiplication
+//Vector operator*(Matrix<double>& A, Vector& b) {
+//    Vector v_temp(b.len());
+//    Matrix<double> m_temp = A.Matrix::operator*(b);
+//    for (int i=0; i<b.len(); ++i)
+//        v_temp[i] = m_temp[i][0];
+//    return v_temp;
+//}
 
 // scalar multiplication (other side)
 Vector operator*(double c, Vector v) { return v*c; }
@@ -695,16 +703,7 @@ Vector Offset (int dim) {
 
 // spectral radius: the largest eigenvalue. calculated with power iteration.
 template<>
-double Matrix<double>::SpectRad (void) {
-    //define convergence with a small float eps
-    //vectors prev and curr
-    //pick curr random
-    // do {
-        // normalize curr
-        //prev = curr; 
-        //curr = (*this)*prev
-        // eig = prev * curr / (prev*prev)
-        // } while (|prev-curr| > eps)
+double Matrix<double>::LargEigvl (void) {
     // defines convergence
     double eps = .0001, prev_eig, curr_eig;
     // temp storage

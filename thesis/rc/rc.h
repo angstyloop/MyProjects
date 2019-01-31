@@ -14,8 +14,8 @@ class DiscreteTimeSeries {
             
         virtual void Wash (int);
         const int& Dim() const {return d;}
-        const Vector& Curr() {return (*this)[curr];}
-        const Vector& Prev() {return (*this)[prev];}
+        Vector Curr() {return (*this)[curr];}
+        Vector Prev() {return (*this)[prev];}
         int CurrIndex () {return curr;}
         int PrevIndex () {return prev;}
         void SetCurr(int i) {curr = i;}
@@ -27,10 +27,12 @@ class DiscreteTimeSeries {
 Matrix<double> RidgeRegress(Matrix<double>, Matrix<double>, double);
 
 class EchoStateNetwork : public DiscreteTimeSeries {
-        DiscreteTimeSeries* tr_series; 
+    protected:
+        DiscreteTimeSeries* in_series; 
         Matrix<double> W, W_in, W_out;
         const Vector offset;
         double b;
+        double spec_rad = 0.9;
     public:
         EchoStateNetwork (Vector, DiscreteTimeSeries*, const int&);
         void Map(void);
@@ -39,13 +41,17 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void Observe(int[], int);
         void PrintW_out(void) {W_out.Print();}
         void PrintTr_Series(void);
-        Vector& Tr_Series(int i) {return (*tr_series)[i];}
+        void PrintPred_Series(void);
+        Vector& In_Series(int i) {return (*in_series)[i];}
         void RidgeTrace(Matrix<double>**, int);
         void Wash(int);
-
+        void Predict(void);
+        void SetSpecRad (double rad) {spec_rad = rad;};
+        double SpecRad (void) {return spec_rad;}
 };
 
 class BakersMap : public DiscreteTimeSeries {
+    protected:
         double param;
     public:
         BakersMap (Vector start, int steps, double a)
