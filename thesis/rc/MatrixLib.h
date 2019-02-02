@@ -705,11 +705,13 @@ Vector Offset (int dim) {
 template<>
 double Matrix<double>::LargEigvl (void) {
     // defines convergence
-    double eps = .0001, prev_eig, curr_eig;
+    double eps = EPS, prev_eig, curr_eig;
     // temp storage
     Vector prev(ncol), curr(ncol);
-    // random first vector
-    curr.random(ncol);
+    // random first vector; should use DensRandom here instead.
+    do {
+        curr.random(ncol, -1, 1);
+    } while (curr.Norm()<EPS);
     // set first eig to double max so the loop won't end after one iteration
     curr_eig = DBL_MAX;
     // iterate until cvg (when eigenvalue doesnt change more than eps)

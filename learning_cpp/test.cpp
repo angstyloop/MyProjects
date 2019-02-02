@@ -1,16 +1,12 @@
 #include <iostream>
-using namespace std;
 
-class foo {
-    public:
-        const int bar;
-        foo (int b) : bar(b) {}
-};
 
-int main() {
-    foo f(5);
-    cout << f.bar << endl;
+int main()
+{
+    while(getchar()!='q')
+    {
+        std::cout << "k!" << std::endl;
+    }
 
-    f.bar = 2;
-    
+    return 0;
 }

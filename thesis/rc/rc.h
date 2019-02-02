@@ -43,11 +43,14 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void PrintTr_Series(void);
         void PrintPred_Series(void);
         Vector& In_Series(int i) {return (*in_series)[i];}
-        void RidgeTrace(Matrix<double>**, int);
+        void RidgeTrace(Matrix<double>**, int, double);
         void Wash(int);
         void Predict(void);
         void SetSpecRad (double rad) {spec_rad = rad;};
         double SpecRad (void) {return spec_rad;}
+        void Listen (void);
+        void SetB (double _b) {b=_b;}
+        void RandomParms (double, double); 
 };
 
 class BakersMap : public DiscreteTimeSeries {
@@ -106,3 +109,8 @@ class ScalarFunction : public DiscreteTimeSeries {
         void Map(void);            
 };
 
+//debuggin 
+/*int main() {
+    Matrix<double> M (5,5);
+    
+}*/

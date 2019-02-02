@@ -2,6 +2,8 @@
 #include <iostream>
 
 #define HT_EPS .0001
+//#define OFF .5 
+//#define EPS .00000001
 
 // DiscreteTimeSeries class method definitions
 
@@ -34,6 +36,12 @@ void DiscreteTimeSeries::Listen () {
     while (curr<steps) Map();// see pure virtual function in DiscreteTimeSeries for spec.
 }
 
+// populate series
+void EchoStateNetwork::Listen () {
+    in_series->SetCurr(1);
+    in_series->SetPrev(0);
+    DiscreteTimeSeries::Listen();
+}
 void DiscreteTimeSeries::PrintSeries() {
     for (int i=0; i<steps; ++i) {
         (*this)[i].T().Print();     
@@ -109,7 +117,7 @@ void DiscreteTimeSeries::Wash (int n) {
     }
     // make a zero vector
     Vector temp(d);
-    temp.Fill(0);
+    temp.Fill(EPS);
 
     // zero out the remaining n vectors
     for (int i=steps-n; i<steps; ++i)
@@ -167,22 +175,41 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
       , in_series (_in_series)
       , W (d, d)
       , W_in (d, _in_series->Dim())
-      , W_out (_in_series->Dim(), d)
+      //, W_out (_in_series->Dim(), d)
       , offset (Offset(this->Dim()))
-      , b (.01) // seems like a fine value for the ridge regression parameter
-      {
-          W_in.random(W_in.ncol*W_in.nrow/2,-1, 1); // use density = half the entries
-          W.random(floor(W.ncol*W.nrow/3),-1,1); //The densty really influences 
-                                                 //  the cholesky and fwsub algorithms.
+      , b (0.1) {} // seems like a fine value for the ridge regression parameter
+      
 
-          // divide by largest eigenvalue and multiply by spec_rad<1 to ensure
-          //    echo state property. spec_rad set to .9 by default. use getter/
-          //    setter methods to change it.
-          double c = W.LargEigvl(); 
-          for (int i=0; i<W.nrow; ++i)
-              for (int j=0; j<W.ncol; ++j)
-                  W[i][j] *= spec_rad/c;
-      }
+// Output the ridge trace as a 2-d array where...
+//  > the columns are the components (flattened 
+//      row by row, appending on the right) of
+//      W_out for a given b value;
+//  > the rows are a single component of W_out
+//      varied over a range of b.
+//
+
+void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens){
+    double c = W_in_dens*W_in.ncol*W_in.nrow;
+    W_in_dens>.5 ? W.DenseRandom(floor(c))
+                 : W_in.random(floor(c),-1, 1); 
+    
+    // Calculate largest eigenvalue of rand W, and if it's nan, re-random W
+    // and recalculate eigenvalue until it is a good value.
+    do {
+        c= W_dens*W.ncol*W.nrow;
+        W_dens>.5 ? W.DenseRandom(c)
+                  : W.random(floor(c),-1,1); //The densty really affects inv alg
+        c = abs(W.LargEigvl()); 
+    } while (isnan(c) || c<EPS);
+     
+    // Divide by largest eigenvalue and multiply by spec_rad<1 to ensure
+    //    echo state property. spec_rad set to .9 by default. use getter/
+    //    setter methods to change it.
+    for (int i=0; i<W.nrow; ++i)
+        for (int j=0; j<W.ncol; ++j)
+            W[i][j] *= spec_rad/c;
+    //W.Print();
+}
 
 // should work like Observe(); picks up where Wash() left off.
 void EchoStateNetwork::Predict (void) {
@@ -192,9 +219,8 @@ void EchoStateNetwork::Predict (void) {
         //Swap in approximate input for real one.
         // If we want to define an output function later,
         //  this is where it would be used.
-        //temp = W_out * (*this)[prev]; 
-        W_out * (*this)[prev];
-        //(*in_series)[PrevIndex()] = temp;
+        temp = W_out * (*this)[prev]; 
+        (*in_series)[in_series->PrevIndex()] = temp;
         //Call map to iterate hidden indices
         Map();
     } 
@@ -207,11 +233,8 @@ void EchoStateNetwork::Predict (void) {
     in_series->SetCurr(curr);
 }
 
-void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N) {
-    const int lim=10;
-    const double db = lim * 1.0 / N; 
+void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N, double db=.1) {
     b=0;
-
     for (int i=0; i<N; ++i) {
         Train();
         // the thing pointed to by the pointer pointed to by (trace+i)
@@ -250,14 +273,15 @@ void EchoStateNetwork::Map (void) {
 // call Wash() before Train
 void EchoStateNetwork::Train(void) {
     // fill state and teacher matrices M and T
-    Matrix<double> M (steps, d);
-    Matrix<double> T (steps, in_series->Dim());
+    Matrix<double> M (curr, d);
+    Matrix<double> T (curr, in_series->Dim());
     // iterate over the nonzero vectors, stopping before the first
     //  zeroed vector left by Wash();
     for (int i=0; i<curr; ++i) {
 
-        for (int j=0; j<d; ++j)  
+        for (int j=0; j<d; ++j) {
             M[i][j] = (*this)[i][j]; // rows of M are reservoir states
+        }
 
         for (int j=0; j<in_series->Dim(); ++j)
             T[i][j] = (*in_series)[i][j]; //rows of T are training states
@@ -283,10 +307,88 @@ void ScalarFunction::Map(void) {
 
 ///////////////////////////////////////////
 ////////////////////////////////////////////
-// Tag &&&
 //
 // Driver program to test everything. Comment this out and leave it when finished testing.
+/*
 int main() {
+    /////////////////////////////////////////////
+    ////          Sine Wave Generator        ////
+    /////////////////////////////////////////////
+    int psteps = 50;               //target number of predicted steps
+    int tsteps = 100;               //target number of training steps
+    int steps = psteps + tsteps;    //number of total steps
+    int N = 3;                      //number of nodes
+    Vector esn_start(N);            //reservoir initial state
+    esn_start.random(N, -1, 1);
+    //esn_start.Print();
+
+    // Generate sine output, wash it, and put it in an array.
+    DiscreteTimeSeries* sine = new ScalarFunction(sin, 0, steps);
+    // dimension of input vectors (for ScalarFunction objects d = 1) 
+    int d = sine->Dim();
+    sine->Listen(); 
+    //sine->PrintSeries();
+
+    // Make a 2d array, where each row is a sequence of the i+1th component of
+    //  vectors in the sin series, exclude the the first with psteps vectors
+    //  in each row (i.e. start pulling from *sine at tsteps)
+    double** sin_series = new double*[d];
+
+    // fill it up
+    for (int i=0; i<d; ++i) {
+        sin_series[i] = new double[psteps];
+        for (int j=psteps; j<steps; ++j) {
+            sin_series[i][j-psteps] = (*sine)[j][i];   
+        }
+    } 
+    
+    //print to check; OKAY
+    //for (int i=0; i<d; ++i) {
+    //    for (int j=0; j<psteps; ++j)
+    //        std::cout << sin_series[i][j] << std::endl;
+    //    std::cout << std::endl;
+    //}
+
+    // delete so we can reuse sine 
+    delete sine;
+
+    sine = new ScalarFunction(sin, 0, steps);
+    EchoStateNetwork esn (esn_start, sine, steps);
+    esn.Listen();
+    esn.Wash(psteps);
+    esn.Train();//&&&
+    //esn.PrintSeries();
+    esn.Predict();
+    //esn.PrintTr_Series();
+    //std::cout << std::endl;
+    //esn.PrintPred_Series();
+    //std::cout<<std::endl;
+    // Make a 2d array, where each row is a sequence of the i+1th component of
+    //  vectors in the predicted series.
+    
+    double** pred_series = new double*[d];
+
+    // fill it up
+    for (int i=0; i<d; ++i) {
+        pred_series[i] = new double[psteps];
+        for (int j=tsteps; j<steps; ++j) {
+            pred_series[i][j-tsteps] = (*sine)[j][i];   
+        }
+    } 
+
+    //print to check; OKAY
+    for (int i=0; i<d; ++i) {
+        for (int j=0; j<psteps; ++j)
+            std::cout << pred_series[i][j] << "   " << sin_series[i][j] << std::endl;
+        std::cout << std::endl;
+     }
+
+    
+
+
+
+    /////////////////////////////////////////////
+    
     //Vector bm_start(2);
     //bm_start.random(2,-.5,.5);
     //bm_start.Print();
@@ -296,112 +398,9 @@ int main() {
 
     //bm will be an argument to esn, be sure to delete later
     //DiscreteTimeSeries* bm = new BakersMap(bm_start, steps, a);
-
-    /////////////////////////////////
-    //// Testing Scalar Function ////
-    /////////////////////////////////
-
-    // let's use the sin function instead of bakers map
-    //double (*f)(double);
-    //f = sin;
-    //ScalarFunction (f, 0, steps);  
-
-    //Vector esn_start(N);
-    //esn_start.random(N, -1,1);
-    //esn_start.Print();
-
-    // polymorphism in action! esn takes a EchoStateNetwork*. bm is a BakersMap*, but BakersMap is
-    //  a child of EchoStateNetwork, which is an abstract base class with pure virtual function Map()
-
-    //DiscreteTimeSeries* sine = new ScalarFunction(sin, 0, steps);
-
-    //EchoStateNetwork esn (esn_start, bm/*sine*/, steps);
+    //EchoStateNetwork esn (esn_start, bm, steps);
 
     //esn.Listen();
-
-    ////////////////////////////
-    //// Tested Wash()      ////
-    ////////////////////////////
-    //esn.Wash(2);
-    //esn.PrintSeries();
-
-    //std::cout << std::endl;
-    //esn.PrintTr_Series();
-    //std::cout << std::endl;
-
-    // save the x inputs to compare to observed
-    //double actual_x[steps];
-    //for (int i=0; i<steps; ++i)
-    //    actual_x[i] = (esn.In_Series(i))[0];
-
-    //////////////////////////////////////////
-    //// Testing EchoStateNetwork::Train()////
-    //////////////////////////////////////////
-
-    //esn.Train();
-
-    //works, just commenting out for now
-    //esn.PrintW_out();
-
-
-    /////////////////////////////////////////////
-    //// Testing EchoStateNetwork::Predict() ////
-    /////////////////////////////////////////////
-    //int n_wash = 5;
-    //esn.Listen();
-    //esn.EchoStateNetwork::Wash(n_wash); 
-    //esn.Train();
-    //esn.Predict();
-    //esn.PrintTr_Series(); 
-    //std::cout << std::endl;
-    //esn.PrintPred_Series();
-    
-    //// Get each component of vectors in training series
-    //      and predicted series as flat arrays.
-     
-
-    // dimension of input vectors
-    //int d = bm->Dim(); 
-
-    // Make a 2d array, where each row is a sequence of the i+1th component of
-    //  vectors in the training series.
-    //double** tr_series = new double*[d];
-
-    // fill it up
-//    for (int i=0; i<d; ++i) {
-        //tr_series[i] = new double[bm->CurrIndex()];
-        //for (int j=0; j<bm->CurrIndex(); ++j) 
-            //tr_series[i][j] = (*bm)[j][i];   
-    //} 
-
-    // print to check; OKAY
-    //for (int i=0; i<d; ++i) {
-    //    for (int j=0; j<bm->CurrIndex(); ++j)
-    //        std::cout << tr_series[i][j] << "  ";
-    //    std::cout << std::endl;
-    //}
-    
-    // do the same for predicted series
-    
-     // Make a 2d array, where each row is a sequence of the i+1th component of
-    //  vectors in the predicted series.
-    //double** pred_series = new double*[d];
-
-    // fill it up
-    //for (int i=0; i<d; ++i) {
-        //pred_series[i] = new double[steps - bm->CurrIndex()];
-        //for (int j=bm->CurrIndex(); j<steps; ++j) {
-            //pred_series[i][j-bm->CurrIndex()] = (*bm)[j][i];   
-        //}
-    //} 
-
-    // print to check; OKAY
-    //for (int i=0; i<d; ++i) {
-        //for (int j=0; j<steps-bm->CurrIndex(); ++j)
-            //std::cout << pred_series[i][j] << "  ";
-        //std::cout << std::endl;
-    //}
-
 
     /////////////////////////////////////////////
     //// Testing EchoStateNetwork::Observe() ////
@@ -435,38 +434,45 @@ int main() {
     // goal: print ridge trace to facilitate the selection of b
     
     // number of increments
-    //int num_inc=50;
+    int num_inc=50;
 
     // allocate an array of Matrix pointers to hold the W_out's; delete later;
-    //Matrix<double>** trace = new Matrix<double>*[num_inc]; 
-    //for (int i=0; i<num_inc; ++i)
-    //    trace[i] = new Matrix<double>(2, N); // dimensions of W_out:
-                                             //(input_dimension, reservoir_dimension)
+    Matrix<double>** trace = new Matrix<double>*[num_inc]; 
+    for (int i=0; i<num_inc; ++i)
+        trace[i] = new Matrix<double>(sine->Dim(), N); // dimensions of W_out:
+                                                     //(input_dimension, reservoir_dimension)
 
     // get num_inc W_out's into trace 
-    //esn.RidgeTrace(trace, num_inc);    
-
-    //iterate through trace and print each W_out
-    //for (int i=0; i<num_inc; ++i) {
-        //trace[i]->Print(); 
-        //std::cout << std::endl;
-    //    ;
-    //}
+    esn.RidgeTrace(trace, num_inc);    
    
-    // it prints! now we need to get make an array for each entry in W_out
+    // now we need to get make an array for each entry in W_out
     // lets make an array of these arrays (we're flattening out W_out over 50 b steps)
-    //double** W_out_entries = new double*[2 * N]; // [input_dim * res_dim]
-    //for (int i=0; i<2*N; ++i) {
-    //    W_out_entries[i] = new double[num_inc];
-    //}
-      
+    double** W_out_entries = new double*[sine->Dim() * N]; // [input_dim * res_dim]
+    for (int i=0; i<sine->Dim(); ++i) {
+        for (int j=0; j<N; ++j) {
+            W_out_entries[i*N+j] = new double[num_inc];
+            for (int k=0; k<num_inc; ++k) {
+                W_out_entries[i*N+j][k] = (*trace[k])[i][j];
+            }
+        }
+    }
+  
+    // print to make sure W_out_entries looks good... OKAY
+    for (int i=0; i<sine->Dim()*N; ++i){
+        std::cout << std::endl;
+        for (int j=0; j<num_inc; ++j)
+            std::cout << W_out_entries[i][j] << " ";
+    }
+
     // each of these arrays we can feed to our dislin routine. hopefully we can get them all plotted
     //  on the same graph
 
     // clean up dyn. alloc. memory
     //delete bm;
-    //delete[] trace;
-    //for (int i=0; i<num_inc;++i)
-    //    delete trace[i];
-    //delete sine;
-}
+    delete sine;
+    for (int i=0; i<num_inc; ++i)
+        delete trace[i];
+    delete[] trace;
+    //for (int i=0; i<num_inc; ++i)
+    //delete[] W_out_entries;
+}*/
