@@ -50,7 +50,9 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         double SpecRad (void) {return spec_rad;}
         void Listen (void);
         void SetB (double _b) {b=_b;}
+        double GetB () {return b;}
         void RandomParms (double, double); 
+        double PlotRidgeTrace();
 };
 
 class BakersMap : public DiscreteTimeSeries {
@@ -96,17 +98,20 @@ Matrix<double> RidgeRegress(Matrix<double> T, Matrix<double> M, double b) {
 // a generic class for functions of a single variable like sin(x)
 class ScalarFunction : public DiscreteTimeSeries {
     // step size for generating {sin(i*stp_z)}
-    double stp_sz=.1;
+    double stp_sz;
     // generating function
     double (*f)(double);
     public:
         // constructor takes a function pointer and initializes base class
-        ScalarFunction (double (*_f)(double), double _start, int _steps) 
+        ScalarFunction (double (*_f)(double), double _start, int _steps, double _stp_sz) 
             : DiscreteTimeSeries(DoubleToVector(_start), _steps)
+              , stp_sz (_stp_sz) 
               , f (_f) {}
 
         // pure virtual in DiscreteTimeSeries
         void Map(void);            
+        double GetStepSize() {return stp_sz;}
+        void SetStepSize(double _stp_sz) {stp_sz=_stp_sz;}
 };
 
 //debuggin 

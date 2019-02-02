@@ -175,18 +175,10 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
       , in_series (_in_series)
       , W (d, d)
       , W_in (d, _in_series->Dim())
-      //, W_out (_in_series->Dim(), d)
-      , offset (Offset(this->Dim()))
-      , b (0.1) {} // seems like a fine value for the ridge regression parameter
+      , W_out (_in_series->Dim(), d)
+      , offset (Offset(this->Dim())) {}
       
 
-// Output the ridge trace as a 2-d array where...
-//  > the columns are the components (flattened 
-//      row by row, appending on the right) of
-//      W_out for a given b value;
-//  > the rows are a single component of W_out
-//      varied over a range of b.
-//
 
 void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens){
     double c = W_in_dens*W_in.ncol*W_in.nrow;
@@ -196,8 +188,8 @@ void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens){
     // Calculate largest eigenvalue of rand W, and if it's nan, re-random W
     // and recalculate eigenvalue until it is a good value.
     do {
-        c= W_dens*W.ncol*W.nrow;
-        W_dens>.5 ? W.DenseRandom(c)
+        c = W_dens*W.ncol*W.nrow;
+        W_dens>.5 ? W.DenseRandom(int(floor(c)))
                   : W.random(floor(c),-1,1); //The densty really affects inv alg
         c = abs(W.LargEigvl()); 
     } while (isnan(c) || c<EPS);
@@ -208,7 +200,6 @@ void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens){
     for (int i=0; i<W.nrow; ++i)
         for (int j=0; j<W.ncol; ++j)
             W[i][j] *= spec_rad/c;
-    //W.Print();
 }
 
 // should work like Observe(); picks up where Wash() left off.
@@ -241,6 +232,7 @@ void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N, double db=.1) {
         *trace[i] = W_out;
         b+=db;
     }
+    b=0;
 }
 
 void EchoStateNetwork::Wash(int n) {
@@ -425,47 +417,6 @@ int main() {
     //}
   
     //do something with the actual and observed xvalues with DISLIN
-
-
-    ////////////////////////////
-    //// Testing RidgeTrace ////
-    /////////////////////////////
-    
-    // goal: print ridge trace to facilitate the selection of b
-    
-    // number of increments
-    int num_inc=50;
-
-    // allocate an array of Matrix pointers to hold the W_out's; delete later;
-    Matrix<double>** trace = new Matrix<double>*[num_inc]; 
-    for (int i=0; i<num_inc; ++i)
-        trace[i] = new Matrix<double>(sine->Dim(), N); // dimensions of W_out:
-                                                     //(input_dimension, reservoir_dimension)
-
-    // get num_inc W_out's into trace 
-    esn.RidgeTrace(trace, num_inc);    
-   
-    // now we need to get make an array for each entry in W_out
-    // lets make an array of these arrays (we're flattening out W_out over 50 b steps)
-    double** W_out_entries = new double*[sine->Dim() * N]; // [input_dim * res_dim]
-    for (int i=0; i<sine->Dim(); ++i) {
-        for (int j=0; j<N; ++j) {
-            W_out_entries[i*N+j] = new double[num_inc];
-            for (int k=0; k<num_inc; ++k) {
-                W_out_entries[i*N+j][k] = (*trace[k])[i][j];
-            }
-        }
-    }
-  
-    // print to make sure W_out_entries looks good... OKAY
-    for (int i=0; i<sine->Dim()*N; ++i){
-        std::cout << std::endl;
-        for (int j=0; j<num_inc; ++j)
-            std::cout << W_out_entries[i][j] << " ";
-    }
-
-    // each of these arrays we can feed to our dislin routine. hopefully we can get them all plotted
-    //  on the same graph
 
     // clean up dyn. alloc. memory
     //delete bm;
