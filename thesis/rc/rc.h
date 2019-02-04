@@ -48,20 +48,23 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void Predict(void);
         void SetSpecRad (double rad) {spec_rad = rad;};
         double SpecRad (void) {return spec_rad;}
-        void Listen (void);
+
         void SetB (double _b) {b=_b;}
         double GetB () {return b;}
         void RandomParms (double, double); 
         double PlotRidgeTrace();
+        void Listen();
 };
 
 class BakersMap : public DiscreteTimeSeries {
     protected:
-        double param;
+        double param, c;
     public:
-        BakersMap (Vector start, int steps, double a)
-            : DiscreteTimeSeries (start, steps), param (a) {}                
+        BakersMap (Vector start, int steps, double a, double _c)
+            : DiscreteTimeSeries (start, steps), param (a), c (_c) {}                
             
+        void SetC (double _c) {c=_c;}
+        double GetC () {return c;}
         void Map(void); 
 };
 

@@ -152,7 +152,7 @@ class Matrix {
         }
 
         // neatly print matrix on command line, with optional precision and spacing args
-        virtual void Print (int precision = 5, int spacing = 2) const {
+        virtual void Print (int precision = 10, int spacing = 2) const {
             for (int i=0; i<nrow; ++i) {
                 for (int j=0; j<ncol; ++j)
                     printf("%.*f%*c", precision, M[i][j], spacing, ' ');

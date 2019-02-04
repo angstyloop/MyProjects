@@ -136,34 +136,20 @@ void BakersMap::Map (void) {
     using namespace std;
     const double& x=(*this)[prev][0], y=(*this)[prev][1], a=param;
     Vector temp(2);
-    if (x<-.5 || x>.5 || y<-.5 || y>.5) {
+    /*if (x<-c/2 || x>c/2 || y<-c/2 || y>c/2) {
+        std::cout << "x: " << x << ", y: "<< y<< std::endl;
         std::cout << "BakersMap: Domain Error: domain is the unit square centered at (0,0)." << std::endl;
         exit(EXIT_FAILURE);
-    }
-    if (x>0) {
-        temp[0] = 2*x-.5; 
-        temp[1] = a*(y+.5);
+    }*/
+    if (x<0) {
+        temp[0] = 2*x+c/2;
+        temp[1] = a*(y+c/2)-c/2;
     } else {
-        temp[0] = 2*x+.5;
-        temp[1] = a*(y+.5)-.5;
+        temp[0] = 2*x-c/2; 
+        temp[1] = a*(y+c/2);
     }
     (*this)[curr] = temp;
     prev = curr++;
-}
-
-// vector hyperbolic tangent
-Vector& tanh(Vector& v) {
-    for (int i=0; i<v.len(); ++i)
-        v[i] = tanh(v[i]);
-    return v;
-}
-
-// inverse vector hyperbolic tangent
-Vector atanh(const Vector& v) {
-    Vector temp(v.len());
-    for (int i=0; i<v.len(); ++i)
-        temp[i] = atanh(v[i]);
-    return temp;
 }
 
 // EchoStateNetwork class defs
@@ -205,16 +191,31 @@ void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens){
 // should work like Observe(); picks up where Wash() left off.
 void EchoStateNetwork::Predict (void) {
     int begin = prev;
-    Vector temp(d);
+    Vector temp(in_series->Dim());
     while (curr<steps) {
         //Swap in approximate input for real one.
         // If we want to define an output function later,
         //  this is where it would be used.
+        //W_out.Print(0);
         temp = W_out * (*this)[prev]; 
+
+        //for bakers map the output function is a tanh
+        //for (int i=0; i<temp.len(); ++i) {
+        //    temp[i] = tanh(temp[i]);
+        //}
+        
         (*in_series)[in_series->PrevIndex()] = temp;
+        //(*in_series)[in_series->PrevIndex()].Print();
         //Call map to iterate hidden indices
         Map();
     } 
+
+    temp = W_out*(*this)[prev];
+    //for bakers map 
+    for (int i=0; i<temp.len(); ++i) 
+        temp[i] = tanh(temp[i]);
+    (*in_series)[in_series->PrevIndex()] = temp;
+    
     //set hidden indices up for subsequent printing/graphing.
     //begin should be the index of the first predicted vector;
     //curr should be the index of the last training vector;
@@ -280,6 +281,7 @@ void EchoStateNetwork::Train(void) {
     }
 
     // Compute W_out using Ridge Regression
+    //T.Print();
     W_out = RidgeRegress(T, M, b);
 }
 
