@@ -134,7 +134,7 @@ void DiscreteTimeSeries::Wash (int n) {
 // BakersMap class method definitions
 void BakersMap::Map (void) {
     using namespace std;
-    const double& x=(*this)[prev][0], y=(*this)[prev][1], a=param;
+    const xdouble& x=(*this)[prev][0], y=(*this)[prev][1], a=param;
     Vector temp(2);
     /*if (x<-c/2 || x>c/2 || y<-c/2 || y>c/2) {
         std::cout << "x: " << x << ", y: "<< y<< std::endl;
@@ -167,6 +167,7 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
 
 
 void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens){
+    xdouble eig;
     double c = W_in_dens*W_in.ncol*W_in.nrow;
     W_in_dens>.5 ? W.DenseRandom(floor(c))
                  : W_in.random(floor(c),-1, 1); 
@@ -177,8 +178,8 @@ void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens){
         c = W_dens*W.ncol*W.nrow;
         W_dens>.5 ? W.DenseRandom(int(floor(c)))
                   : W.random(floor(c),-1,1); //The densty really affects inv alg
-        c = abs(W.LargEigvl()); 
-    } while (isnan(c) || c<EPS);
+        eig = abs(W.LargEigvl()); 
+    } while (isnan(eig) || eig<EPS);
      
     // Divide by largest eigenvalue and multiply by spec_rad<1 to ensure
     //    echo state property. spec_rad set to .9 by default. use getter/
@@ -225,7 +226,7 @@ void EchoStateNetwork::Predict (void) {
     in_series->SetCurr(curr);
 }
 
-void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N, double db=.1) {
+void EchoStateNetwork::RidgeTrace(Matrix<xdouble>** trace, int N, xdouble db=.1) {
     b=0;
     for (int i=0; i<N; ++i) {
         Train();
@@ -266,8 +267,8 @@ void EchoStateNetwork::Map (void) {
 // call Wash() before Train
 void EchoStateNetwork::Train(void) {
     // fill state and teacher matrices M and T
-    Matrix<double> M (curr, d);
-    Matrix<double> T (curr, in_series->Dim());
+    Matrix<xdouble> M (curr, d);
+    Matrix<xdouble> T (curr, in_series->Dim());
     // iterate over the nonzero vectors, stopping before the first
     //  zeroed vector left by Wash();
     for (int i=0; i<curr; ++i) {
@@ -294,138 +295,7 @@ void EchoStateNetwork::Train(void) {
 
 // pure virtual in base class
 void ScalarFunction::Map(void) {
-    const double start = (*this)[0][0];
+    const xdouble start = (*this)[0][0];
     (*this)[curr][0] = f(start + curr * stp_sz);
     prev = curr++;
 }
-
-///////////////////////////////////////////
-////////////////////////////////////////////
-//
-// Driver program to test everything. Comment this out and leave it when finished testing.
-/*
-int main() {
-    /////////////////////////////////////////////
-    ////          Sine Wave Generator        ////
-    /////////////////////////////////////////////
-    int psteps = 50;               //target number of predicted steps
-    int tsteps = 100;               //target number of training steps
-    int steps = psteps + tsteps;    //number of total steps
-    int N = 3;                      //number of nodes
-    Vector esn_start(N);            //reservoir initial state
-    esn_start.random(N, -1, 1);
-    //esn_start.Print();
-
-    // Generate sine output, wash it, and put it in an array.
-    DiscreteTimeSeries* sine = new ScalarFunction(sin, 0, steps);
-    // dimension of input vectors (for ScalarFunction objects d = 1) 
-    int d = sine->Dim();
-    sine->Listen(); 
-    //sine->PrintSeries();
-
-    // Make a 2d array, where each row is a sequence of the i+1th component of
-    //  vectors in the sin series, exclude the the first with psteps vectors
-    //  in each row (i.e. start pulling from *sine at tsteps)
-    double** sin_series = new double*[d];
-
-    // fill it up
-    for (int i=0; i<d; ++i) {
-        sin_series[i] = new double[psteps];
-        for (int j=psteps; j<steps; ++j) {
-            sin_series[i][j-psteps] = (*sine)[j][i];   
-        }
-    } 
-    
-    //print to check; OKAY
-    //for (int i=0; i<d; ++i) {
-    //    for (int j=0; j<psteps; ++j)
-    //        std::cout << sin_series[i][j] << std::endl;
-    //    std::cout << std::endl;
-    //}
-
-    // delete so we can reuse sine 
-    delete sine;
-
-    sine = new ScalarFunction(sin, 0, steps);
-    EchoStateNetwork esn (esn_start, sine, steps);
-    esn.Listen();
-    esn.Wash(psteps);
-    esn.Train();//&&&
-    //esn.PrintSeries();
-    esn.Predict();
-    //esn.PrintTr_Series();
-    //std::cout << std::endl;
-    //esn.PrintPred_Series();
-    //std::cout<<std::endl;
-    // Make a 2d array, where each row is a sequence of the i+1th component of
-    //  vectors in the predicted series.
-    
-    double** pred_series = new double*[d];
-
-    // fill it up
-    for (int i=0; i<d; ++i) {
-        pred_series[i] = new double[psteps];
-        for (int j=tsteps; j<steps; ++j) {
-            pred_series[i][j-tsteps] = (*sine)[j][i];   
-        }
-    } 
-
-    //print to check; OKAY
-    for (int i=0; i<d; ++i) {
-        for (int j=0; j<psteps; ++j)
-            std::cout << pred_series[i][j] << "   " << sin_series[i][j] << std::endl;
-        std::cout << std::endl;
-     }
-
-    
-
-
-
-    /////////////////////////////////////////////
-    
-    //Vector bm_start(2);
-    //bm_start.random(2,-.5,.5);
-    //bm_start.Print();
-    
-    //int steps=10, N=50;
-    //double a = 1./3;
-
-    //bm will be an argument to esn, be sure to delete later
-    //DiscreteTimeSeries* bm = new BakersMap(bm_start, steps, a);
-    //EchoStateNetwork esn (esn_start, bm, steps);
-
-    //esn.Listen();
-
-    /////////////////////////////////////////////
-    //// Testing EchoStateNetwork::Observe() ////
-    /////////////////////////////////////////////
-    
-    // indices is an array of indices of input vectors that we want to observe
-    //const int indices_length = 1;
-    //int indices[indices_length]= {1}; //observe the x component
-
-    // starts observing at index curr, which is where Wash() leaves off
-    //esn.Observe(indices, indices_length);
-
-    // save the new in_series (with observed inputs)
-    //double obs_x[steps];
-    //for (int i=0; i<steps; ++i)
-    //    obs_x[i] = (esn.In_Series(i))[0];
-
-    //  print the actual and observed x values side by side
-    //for (int i=esn.CurrIndex; i<steps; ++i) {
-    //    std::cout << actual_x[i] << "              " << obs_x[i] << std::endl;
-    //    ;
-    //}
-  
-    //do something with the actual and observed xvalues with DISLIN
-
-    // clean up dyn. alloc. memory
-    //delete bm;
-    delete sine;
-    for (int i=0; i<num_inc; ++i)
-        delete trace[i];
-    delete[] trace;
-    //for (int i=0; i<num_inc; ++i)
-    //delete[] W_out_entries;
-}*/

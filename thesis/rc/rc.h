@@ -24,15 +24,15 @@ class DiscreteTimeSeries {
         void PrintSeries();
 };
 
-Matrix<double> RidgeRegress(Matrix<double>, Matrix<double>, double);
+Matrix<xdouble> RidgeRegress(Matrix<xdouble>, Matrix<xdouble>, xdouble);
 
 class EchoStateNetwork : public DiscreteTimeSeries {
     protected:
         DiscreteTimeSeries* in_series; 
-        Matrix<double> W, W_in, W_out;
+        Matrix<xdouble> W, W_in, W_out;
         const Vector offset;
-        double b;
-        double spec_rad = 0.9;
+        xdouble b;
+        xdouble spec_rad = 0.9;
     public:
         EchoStateNetwork (Vector, DiscreteTimeSeries*, const int&);
         void Map(void);
@@ -43,28 +43,28 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void PrintTr_Series(void);
         void PrintPred_Series(void);
         Vector& In_Series(int i) {return (*in_series)[i];}
-        void RidgeTrace(Matrix<double>**, int, double);
+        void RidgeTrace(Matrix<xdouble>**, int, xdouble);
         void Wash(int);
         void Predict(void);
-        void SetSpecRad (double rad) {spec_rad = rad;};
-        double SpecRad (void) {return spec_rad;}
+        void SetSpecRad (xdouble rad) {spec_rad = rad;};
+        xdouble SpecRad (void) {return spec_rad;}
 
-        void SetB (double _b) {b=_b;}
-        double GetB () {return b;}
+        void SetB (xdouble _b) {b=_b;}
+        xdouble GetB () {return b;}
         void RandomParms (double, double); 
-        double PlotRidgeTrace();
+        xdouble PlotRidgeTrace();
         void Listen();
 };
 
 class BakersMap : public DiscreteTimeSeries {
     protected:
-        double param, c;
+        xdouble param, c;
     public:
-        BakersMap (Vector start, int steps, double a, double _c)
+        BakersMap (Vector start, int steps, xdouble a, xdouble _c)
             : DiscreteTimeSeries (start, steps), param (a), c (_c) {}                
             
-        void SetC (double _c) {c=_c;}
-        double GetC () {return c;}
+        void SetC (xdouble _c) {c=_c;}
+        xdouble GetC () {return c;}
         void Map(void); 
 };
 
@@ -73,9 +73,9 @@ class BakersMap : public DiscreteTimeSeries {
 // M : state matrix
 // b : RR parameter
 // returns the matrix (W_out) that minimizeds the RR error function 
-Matrix<double> RidgeRegress(Matrix<double> T, Matrix<double> M, double b) {
+Matrix<xdouble> RidgeRegress(Matrix<xdouble> T, Matrix<xdouble> M, xdouble b) {
     //build the matrix M * M.T() + b * I and invert
-    Matrix<double> temp = M.T()*M;
+    Matrix<xdouble> temp = M.T()*M;
     for (int i=0; i<temp.ncol; ++i)
         temp[i][i] += b;
     // invert temp and do the remaining matrix multiplications
@@ -91,8 +91,8 @@ Matrix<double> RidgeRegress(Matrix<double> T, Matrix<double> M, double b) {
      exit (EXIT_FAILURE);  
  }
 
-// convert a double to a 1-d Vector
- const Vector DoubleToVector(double d) {
+// convert a xdouble to a 1-d Vector
+ const Vector xdoubleToVector(xdouble d) {
     Vector* v = new Vector(1);
     (*v)[0] = d;
     return *v;
@@ -101,24 +101,24 @@ Matrix<double> RidgeRegress(Matrix<double> T, Matrix<double> M, double b) {
 // a generic class for functions of a single variable like sin(x)
 class ScalarFunction : public DiscreteTimeSeries {
     // step size for generating {sin(i*stp_z)}
-    double stp_sz;
+    xdouble stp_sz;
     // generating function
-    double (*f)(double);
+    xdouble (*f)(xdouble);
     public:
         // constructor takes a function pointer and initializes base class
-        ScalarFunction (double (*_f)(double), double _start, int _steps, double _stp_sz) 
-            : DiscreteTimeSeries(DoubleToVector(_start), _steps)
+        ScalarFunction (xdouble (*_f)(xdouble), xdouble _start, int _steps, xdouble _stp_sz) 
+            : DiscreteTimeSeries(xdoubleToVector(_start), _steps)
               , stp_sz (_stp_sz) 
               , f (_f) {}
 
         // pure virtual in DiscreteTimeSeries
         void Map(void);            
-        double GetStepSize() {return stp_sz;}
-        void SetStepSize(double _stp_sz) {stp_sz=_stp_sz;}
+        xdouble GetStepSize() {return stp_sz;}
+        void SetStepSize(xdouble _stp_sz) {stp_sz=_stp_sz;}
 };
 
 //debuggin 
 /*int main() {
-    Matrix<double> M (5,5);
+    Matrix<xdouble> M (5,5);
     
 }*/
