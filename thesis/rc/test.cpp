@@ -5,6 +5,7 @@
 
 //typedef double xdouble;
 typedef boost::multiprecision::cpp_dec_float_50 xdouble;
+
 using namespace std; 
 
 vector<xdouble> Baker (vector<xdouble>& v)
@@ -36,6 +37,6 @@ int main()
     for (int i=1; i<100; ++i) {   
         baker_series[i] = Baker(baker_series[i-1]);
         cout << baker_series[i][0] << "    " << baker_series[i][1] << endl;
-    } 
+    }
     return 0;
 }

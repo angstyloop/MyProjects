@@ -1,7 +1,6 @@
 #include "rc.h"
 #include <iostream>
 
-#define HT_EPS .0001
 //#define OFF .5 
 //#define EPS .00000001
 
@@ -134,21 +133,25 @@ void DiscreteTimeSeries::Wash (int n) {
 // BakersMap class method definitions
 void BakersMap::Map (void) {
     using namespace std;
-    const xdouble& x=(*this)[prev][0], y=(*this)[prev][1], a=param;
-    Vector temp(2);
+    //const double& x=(*this)[prev][0], y=(*this)[prev][1], a=param;
+    //Vector temp(2);
     /*if (x<-c/2 || x>c/2 || y<-c/2 || y>c/2) {
         std::cout << "x: " << x << ", y: "<< y<< std::endl;
         std::cout << "BakersMap: Domain Error: domain is the unit square centered at (0,0)." << std::endl;
         exit(EXIT_FAILURE);
     }*/
+    
     if (x<0) {
-        temp[0] = 2*x+c/2;
-        temp[1] = a*(y+c/2)-c/2;
+        x = 2*x+c/2;
+        y = a*(y+c/2)-c/2;
     } else {
-        temp[0] = 2*x-c/2; 
-        temp[1] = a*(y+c/2);
+        x = 2*x-c/2; 
+        y = a*(y+c/2);
     }
-    (*this)[curr] = temp;
+
+    //(*this)[curr] = temp;
+    (*this)[curr][0] = double(x);
+    (*this)[curr][1] = double(y);
     prev = curr++;
 }
 
@@ -167,7 +170,7 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
 
 
 void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens){
-    xdouble eig;
+    double eig;
     double c = W_in_dens*W_in.ncol*W_in.nrow;
     W_in_dens>.5 ? W.DenseRandom(floor(c))
                  : W_in.random(floor(c),-1, 1); 
@@ -213,8 +216,8 @@ void EchoStateNetwork::Predict (void) {
 
     temp = W_out*(*this)[prev];
     //for bakers map 
-    for (int i=0; i<temp.len(); ++i) 
-        temp[i] = tanh(temp[i]);
+    //for (int i=0; i<temp.len(); ++i) 
+    //    temp[i] = tanh(temp[i]);
     (*in_series)[in_series->PrevIndex()] = temp;
     
     //set hidden indices up for subsequent printing/graphing.
@@ -226,7 +229,7 @@ void EchoStateNetwork::Predict (void) {
     in_series->SetCurr(curr);
 }
 
-void EchoStateNetwork::RidgeTrace(Matrix<xdouble>** trace, int N, xdouble db=.1) {
+void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N, double db=.1) {
     b=0;
     for (int i=0; i<N; ++i) {
         Train();
@@ -267,8 +270,8 @@ void EchoStateNetwork::Map (void) {
 // call Wash() before Train
 void EchoStateNetwork::Train(void) {
     // fill state and teacher matrices M and T
-    Matrix<xdouble> M (curr, d);
-    Matrix<xdouble> T (curr, in_series->Dim());
+    Matrix<double> M (curr, d);
+    Matrix<double> T (curr, in_series->Dim());
     // iterate over the nonzero vectors, stopping before the first
     //  zeroed vector left by Wash();
     for (int i=0; i<curr; ++i) {
@@ -295,7 +298,7 @@ void EchoStateNetwork::Train(void) {
 
 // pure virtual in base class
 void ScalarFunction::Map(void) {
-    const xdouble start = (*this)[0][0];
+    const double start = (*this)[0][0];
     (*this)[curr][0] = f(start + curr * stp_sz);
     prev = curr++;
 }

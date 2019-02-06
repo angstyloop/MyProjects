@@ -6,9 +6,7 @@
 #include <sstream>
 #include <random>
 #include <cmath>
-//#include <boost/multiprecision/cpp_dec_float.hpp>
-//typedef boost::multiprecision::cpp_dec_float<50> xdouble;
-typedef double xdouble;
+
 #define OFF .01
 #define EPS .000000001
 #define HT_LIM
@@ -176,7 +174,7 @@ class Matrix {
         }
 
         // fill with a constant instead
-        void Fill (xdouble d) {
+        void Fill (double d) {
             for (int i=0; i<nrow; ++i)
                 for (int j=0; j<ncol; ++j)
                     M[i][j] = d;
@@ -265,10 +263,10 @@ class Matrix {
 
         void DenseRandom(int);
 
-        void GenerateSymmetricReservoir (Matrix&, Matrix&, xdouble);
+        void GenerateSymmetricReservoir (Matrix&, Matrix&, double);
 
         // spectral radius: the largest eigenvalue. calculated with power iteration.
-        xdouble LargEigvl (void); 
+        double LargEigvl (void); 
 
 }; //end of Matrix<type> class
 
@@ -276,12 +274,12 @@ class Matrix {
 template <class type>
 Matrix<type> concat(const Matrix<type>& L, const Matrix<type>& R);
 
-class AugMatrix : public Matrix<xdouble> {
+class AugMatrix : public Matrix<double> {
     private:
         int acol; // index of the first column of the augmenting matrix  
     public:
-        AugMatrix (const Matrix<xdouble>& L, const Matrix<xdouble>& R) 
-            : Matrix<xdouble>(L.nrow, L.ncol+R.ncol, concat(L, R)), acol(L.ncol) {
+        AugMatrix (const Matrix<double>& L, const Matrix<double>& R) 
+            : Matrix<double>(L.nrow, L.ncol+R.ncol, concat(L, R)), acol(L.ncol) {
             if (L.nrow!=R.nrow) {
                 std::cout << "Number of rows must match." << std::endl;
                 exit(EXIT_SUCCESS);
@@ -334,15 +332,15 @@ Matrix<type> Identity(int n) {
     return temp;
 }
 
-class Vector : public Matrix<xdouble> {
+class Vector : public Matrix<double> {
     int length;
     public:
         //ctors
         Vector () : length(0) {};
-        Vector (int dim) : Matrix<xdouble>(dim, 1), length(dim) {} // vectors are column  
+        Vector (int dim) : Matrix<double>(dim, 1), length(dim) {} // vectors are column  
 
         // copy ctor
-        Vector (const Vector& that) : Matrix<xdouble>(that), length(that.nrow) {} 
+        Vector (const Vector& that) : Matrix<double>(that), length(that.nrow) {} 
       
         // move assignment
         Vector& operator= (Vector&& that) {
@@ -356,8 +354,8 @@ class Vector : public Matrix<xdouble> {
             return *this;
         }
 
-        Vector& operator= (Matrix<xdouble>&& that) {
-            Matrix<xdouble>::operator=(that);
+        Vector& operator= (Matrix<double>&& that) {
+            Matrix<double>::operator=(that);
             return *this;
         }
 
@@ -376,47 +374,47 @@ class Vector : public Matrix<xdouble> {
         }
         
         // uses Matrix Fill
-        void Fill (xdouble* arr, int r) {
-            xdouble** temp = new xdouble*[r];
+        void Fill (double* arr, int r) {
+            double** temp = new double*[r];
             for (int i=0; i<r; ++i)
-                temp[i] = new xdouble[1];
+                temp[i] = new double[1];
             for (int i=0; i<r; ++i)
                 temp[r][1] = arr[i];
-            Matrix<xdouble>::Fill(temp, r, 1);
+            Matrix<double>::Fill(temp, r, 1);
         }
         
         // uses matrix fill
-        void Fill (xdouble d) {
-            xdouble** temp = new xdouble*[length];
+        void Fill (double d) {
+            double** temp = new double*[length];
             for (int i=0; i<length; ++i) {
-                temp[i] = new xdouble[1];
+                temp[i] = new double[1];
                 temp[i][1] = d;
             }
-            Matrix<xdouble>::Fill(temp, length, 1);
+            Matrix<double>::Fill(temp, length, 1);
         }
         
         //indices
-        xdouble& operator[] (const int i) const { return M[i][0]; }
+        double& operator[] (const int i) const { return M[i][0]; }
 
         //dot product
-        xdouble operator*(Vector& that) {
+        double operator*(Vector& that) {
             if (this->length != that.length) {
                 std::cout << "Dot product needs two vectors of the same length..." << std::endl; 
                 exit(EXIT_SUCCESS);
             }
-            xdouble sum = 0;
+            double sum = 0;
             for (int i=0; i<length; ++i) 
                 sum += (*this)[i] * that[i];
             return sum;
         }
 
         //norm
-        xdouble Norm (void) { 
+        double Norm (void) { 
             return sqrt( (*this) * (*this) ); 
         }
 
         // scalar multiplication
-        Vector operator*(xdouble c) {
+        Vector operator*(double c) {
             Vector v = *this;
             for (int i=0; i<length; ++i) {v[i] *= c;}
             return *this; 
@@ -427,16 +425,16 @@ class Vector : public Matrix<xdouble> {
 };
 
 // Matrix * vector multiplication
-//Vector operator*(Matrix<xdouble>& A, Vector& b) {
+//Vector operator*(Matrix<double>& A, Vector& b) {
 //    Vector v_temp(b.len());
-//    Matrix<xdouble> m_temp = A.Matrix::operator*(b);
+//    Matrix<double> m_temp = A.Matrix::operator*(b);
 //    for (int i=0; i<b.len(); ++i)
 //        v_temp[i] = m_temp[i][0];
 //    return v_temp;
 //}
 
 // scalar multiplication (other side)
-Vector operator*(xdouble c, Vector v) { return v*c; }
+Vector operator*(double c, Vector v) { return v*c; }
 
 
 
@@ -457,7 +455,7 @@ void Matrix<type>::rsub (int i, int j, type c) {
 
 template <class type>
 void Matrix<type>::rswap (int i, int j) {
-    xdouble temp;
+    double temp;
     for (int k=0; k<ncol; ++k) {
         temp = M[i][k];
         M[i][k] = M[j][k];
@@ -466,7 +464,7 @@ void Matrix<type>::rswap (int i, int j) {
 }
 
 // wrapper for sqrt function gives an error if the arg is negative
-xdouble Sqrt(xdouble x) {
+double Sqrt(double x) {
     if (x<0) {
         std::cout << "Square root of negative number" << x << " encountered. Exiting." << std::endl;
         exit(EXIT_FAILURE);
@@ -477,12 +475,12 @@ xdouble Sqrt(xdouble x) {
 // only works for positive-semidefinite matrices. will only work for ridge regression
 // if M has no nonnegative entries.
 template <>
-Matrix<xdouble> Matrix<xdouble>::cholesky () {
+Matrix<double> Matrix<double>::cholesky () {
     if (nrow != ncol) {
         std::cout << "Need a pos. semidef. real symmetric matrix." << std::endl;
         exit(EXIT_SUCCESS);
     }
-    xdouble sum;
+    double sum;
     Matrix L(nrow, ncol);
     // set the first entry
     L[0][0] = Sqrt(M[0][0]);
@@ -511,7 +509,7 @@ Matrix<xdouble> Matrix<xdouble>::cholesky () {
 // uses forward substitution to solve a lower triangular system. assumes the matrix of
 //  coefficients is lower triangular. most useful for AugMatrix objects.
 template <>
-void Matrix<xdouble>::forwsub () {
+void Matrix<double>::forwsub () {
     int i,k;
     for (i=0; i<nrow; ++i) {
         if (M[i][i] < DBL_MIN) {
@@ -525,13 +523,13 @@ void Matrix<xdouble>::forwsub () {
 }
 
 template <>
-Matrix<xdouble> Matrix<xdouble>::inv_cholesky () {
+Matrix<double> Matrix<double>::inv_cholesky () {
     if (nrow!=ncol) {
         std::cout << "Matrix must be square." << std::endl;
         exit (EXIT_FAILURE);
     }
-    Matrix<xdouble> N = Identity<xdouble>(nrow); // will be the inverse of the cholesky L
-    Matrix<xdouble> L = cholesky(); // the lower triangular matrix L in cholesky factorization 
+    Matrix<double> N = Identity<double>(nrow); // will be the inverse of the cholesky L
+    Matrix<double> L = cholesky(); // the lower triangular matrix L in cholesky factorization 
     AugMatrix A (L, N);
     A.forwsub();
     N = A.getAug();
@@ -553,7 +551,7 @@ void Matrix<type>::zero() {
 //
 //  begin and end are set to -1 and 1 by default.
 template <>
-void Matrix<xdouble>::random(int dens, double begin, double end) {
+void Matrix<double>::random(int dens, double begin, double end) {
     if (dens > ncol*nrow) {
         std::cout << "Density must not exceed the number of entries ..." << std::endl;
         exit(EXIT_FAILURE);
@@ -631,7 +629,7 @@ T* RandomSelect(T S[], int n, T out[], int k) {
 }
 
 template <>
-void Matrix<xdouble>::DenseRandom(int dens) {
+void Matrix<double>::DenseRandom(int dens) {
     int i, k=0, p=nrow*ncol; //Indices and num. entries.
     int** picked_pairs = new int*[dens];    // to hold randomly selected pairs
     int** ij_pairs = new int*[p]; //To store all pairs.
@@ -643,7 +641,7 @@ void Matrix<xdouble>::DenseRandom(int dens) {
     //random generator stuff
     //random_device rd;
     std::default_random_engine gen(rd());
-    std::uniform_real_distribution<xdouble> dist(-1,1);
+    std::uniform_real_distribution<double> dist(-1,1);
     //auto roll = std::bind(dist, gen); 
 
     for (i=0; i<nrow; ++i) {    // Generate [i,j] pairs
@@ -666,14 +664,14 @@ void Matrix<xdouble>::DenseRandom(int dens) {
 
 
 template <>
-void Matrix<xdouble>::GenerateSymmetricReservoir (Matrix<xdouble>& Q, Matrix<xdouble>& D, xdouble spec_rad) {
+void Matrix<double>::GenerateSymmetricReservoir (Matrix<double>& Q, Matrix<double>& D, double spec_rad) {
     std::random_device rd;
     std::default_random_engine gen(rd());
 
-    std::uniform_real_distribution<xdouble> dist(-1,1);
+    std::uniform_real_distribution<double> dist(-1,1);
     //auto roll = std::bind(dist, gen); 
         
-    xdouble sum_sqrs; // to track the sum of squares of row entries so we can normalize rows
+    double sum_sqrs; // to track the sum of squares of row entries so we can normalize rows
     for (int i=0; i<nrow; ++i) {
         sum_sqrs = 0;
         //// randomly assign entries to row i
@@ -705,16 +703,16 @@ Vector Offset (int dim) {
 
 // spectral radius: the largest eigenvalue. calculated with power iteration.
 template<>
-xdouble Matrix<xdouble>::LargEigvl (void) {
+double Matrix<double>::LargEigvl (void) {
     // defines convergence
-    xdouble eps = EPS, prev_eig, curr_eig;
+    double eps = EPS, prev_eig, curr_eig;
     // temp storage
     Vector prev(ncol), curr(ncol);
     // random first vector; should use DensRandom here instead.
     do {
         curr.random(ncol, -1, 1);
     } while (curr.Norm()<EPS);
-    // set first eig to xdouble max so the loop won't end after one iteration
+    // set first eig to double max so the loop won't end after one iteration
     curr_eig = DBL_MAX;
     // iterate until cvg (when eigenvalue doesnt change more than eps)
     do {
