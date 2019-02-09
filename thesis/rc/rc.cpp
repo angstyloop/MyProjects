@@ -26,19 +26,16 @@ DiscreteTimeSeries::DiscreteTimeSeries (Vector start, const int& s )
         }
         // make series[0] point to start. see DiscreteTimeSeries::operator[].
         (*this)[0] = start;
+
     }
 
 // populate series
 void DiscreteTimeSeries::Listen () {
-    curr = 1;
-    prev = 0;
     while (curr<steps) Map();// see pure virtual function in DiscreteTimeSeries for spec.
 }
 
 // populate series
 void EchoStateNetwork::Listen () {
-    in_series->SetCurr(1);
-    in_series->SetPrev(0);
     DiscreteTimeSeries::Listen();
 }
 void DiscreteTimeSeries::PrintSeries() {
@@ -93,7 +90,7 @@ void EchoStateNetwork::Observe(int* comps, int L) {
                 exit(EXIT_FAILURE);    
             }
 
-            in_series->Prev()[j] = v[j]; //sub in the approximated components for the corresponding
+            in_series->SetPrevComp(j,v[j]); //sub in the approximated components for the corresponding
                                           // components in the previous input vector, which will be 
                                           // used to generate a new current input vector next time we 
                                           // call Map().
@@ -106,6 +103,7 @@ void EchoStateNetwork::Observe(int* comps, int L) {
     prev = begin;
     curr = prev + 1;
 }
+
 
 // wash out the first n points in series
 void DiscreteTimeSeries::Wash (int n) {
@@ -165,15 +163,28 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
       , W (d, d)
       , W_in (d, _in_series->Dim())
       , W_out (_in_series->Dim(), d)
-      , offset (Offset(this->Dim())) {}
+      , offset (Offset(this->Dim())) {
+
+        // initialize "current" and "previous" indices of in_series, just in case they're outta
+        //  wack. if the indices aren't right then listen() will be wrong
+        in_series->SetCurr(1);
+        in_series->SetPrev(0);
+
+        //initialize og_series
+        og_series = new Vector*[steps];
+        for (int i=0; i<steps; ++i)
+            og_series[i] = new Vector(in_series->Dim());
+
+      }
       
 
+//double LargLyapunov()
 
-void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens){
+void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens, double sigma){
     double eig;
     double c = W_in_dens*W_in.ncol*W_in.nrow;
     W_in_dens>.5 ? W.DenseRandom(floor(c))
-                 : W_in.random(floor(c),-1, 1); 
+                 : W_in.random(floor(c),-sigma, sigma); 
     
     // Calculate largest eigenvalue of rand W, and if it's nan, re-random W
     // and recalculate eigenvalue until it is a good value.
@@ -200,24 +211,32 @@ void EchoStateNetwork::Predict (void) {
         //Swap in approximate input for real one.
         // If we want to define an output function later,
         //  this is where it would be used.
-        //W_out.Print(0);
+        //W_out.Print();
         temp = W_out * (*this)[prev]; 
 
-        //for bakers map the output function is a tanh
-        //for (int i=0; i<temp.len(); ++i) {
-        //    temp[i] = tanh(temp[i]);
-        //}
-        
-        (*in_series)[in_series->PrevIndex()] = temp;
+        // save the original input for later so we can compare
+        *(og_series[in_series->PrevIndex()]) = in_series->Prev();
+
+        // swap out each component of the input vector for the predicted input vector.
+        //  I use a for loop here just so it looks exactly like Observe()
+        for (int i=0; i<temp.len(); ++i) {
+            in_series->SetPrevComp(i, temp[i]);
+        }
+
+        //in_series->Prev().Print();
+
+        //(*in_series)[in_series->PrevIndex()] = temp;
         //(*in_series)[in_series->PrevIndex()].Print();
+
         //Call map to iterate hidden indices
         Map();
     } 
 
+    //one more time to get the last predicted output 
     temp = W_out*(*this)[prev];
-    //for bakers map 
-    //for (int i=0; i<temp.len(); ++i) 
-    //    temp[i] = tanh(temp[i]);
+
+    // save the original input for later so we can compare
+    *(og_series[in_series->PrevIndex()]) = in_series->Prev();
     (*in_series)[in_series->PrevIndex()] = temp;
     
     //set hidden indices up for subsequent printing/graphing.
@@ -232,7 +251,7 @@ void EchoStateNetwork::Predict (void) {
 void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N, double db=.1) {
     b=0;
     for (int i=0; i<N; ++i) {
-        Train();
+        Train(steps);
         // the thing pointed to by the pointer pointed to by (trace+i)
         *trace[i] = W_out;
         b+=db;
@@ -268,13 +287,17 @@ void EchoStateNetwork::Map (void) {
 }
 
 // call Wash() before Train
-void EchoStateNetwork::Train(void) {
+void EchoStateNetwork::Train(int t) {
+    // we don't want to train on any zeroes left by Wash
+    t = t < curr ? t : curr;
+
     // fill state and teacher matrices M and T
-    Matrix<double> M (curr, d);
-    Matrix<double> T (curr, in_series->Dim());
+    Matrix<double> M (t, d);
+    Matrix<double> T (t, in_series->Dim());
+
     // iterate over the nonzero vectors, stopping before the first
     //  zeroed vector left by Wash();
-    for (int i=0; i<curr; ++i) {
+    for (int i=0; i<t; ++i) {
 
         for (int j=0; j<d; ++j) {
             M[i][j] = (*this)[i][j]; // rows of M are reservoir states
@@ -287,6 +310,21 @@ void EchoStateNetwork::Train(void) {
     // Compute W_out using Ridge Regression
     //T.Print();
     W_out = RidgeRegress(T, M, b);
+
+    // put last training point at the front and zero the rest
+    
+    Vector temp1 = (*in_series)[t-1];
+    //(*in_series)[0] = (*in_series)[t-1];
+    
+    Vector temp2 = (*this)[t-1];
+    //(*this)[0] = (*this)[t-1];
+
+    Wash(steps-1);
+
+    (*in_series)[0] = temp1;
+    (*this)[0] = temp2;
+
+
 }
 
 

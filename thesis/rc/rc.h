@@ -15,17 +15,22 @@ class DiscreteTimeSeries {
         virtual void Map(void) =0; 
             //series[curr] = f (series[prev]);;
             //prev = curr++;=0
-            
+        
+        // need this here for polymorphism with EchoStateNetwork
+        virtual Vector OG_Series (int i) { return (*this)[0]; }
+
         virtual void Wash (int);
         const int& Dim() const {return d;}
-        Vector Curr() {return (*this)[curr];}
-        Vector Prev() {return (*this)[prev];}
+        Vector& Curr() {return (*this)[curr];}
+        Vector& Prev() {return (*this)[prev];} // eq. to (*this)[PrevIndex()]
         int CurrIndex () {return curr;}
         int PrevIndex () {return prev;}
         void SetCurr(int i) {curr = i;}
         void SetPrev(int i) {prev = i;}
+        void SetPrevComp(int i, double val) {(*this)[prev][i] = val;}
         void Listen(void);
         void PrintSeries();
+        int Steps(void) {return steps;}
 };
 
 Matrix<double> RidgeRegress(Matrix<double>, Matrix<double>, double);
@@ -33,6 +38,7 @@ Matrix<double> RidgeRegress(Matrix<double>, Matrix<double>, double);
 class EchoStateNetwork : public DiscreteTimeSeries {
     protected:
         DiscreteTimeSeries* in_series; 
+        Vector** og_series;
         Matrix<double> W, W_in, W_out;
         const Vector offset;
         double b;
@@ -41,12 +47,13 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         EchoStateNetwork (Vector, DiscreteTimeSeries*, const int&);
         void Map(void);
         //fill M with rowvectors obt
-        void Train(void);
+        void Train(int);
         void Observe(int[], int);
         void PrintW_out(void) {W_out.Print();}
         void PrintTr_Series(void);
         void PrintPred_Series(void);
-        Vector& In_Series(int i) {return (*in_series)[i];}
+        Vector In_Series(int i) {return (*in_series)[i];}
+        Vector OG_Series (int i) {return *(og_series[i]);}
         void RidgeTrace(Matrix<double>**, int, double);
         void Wash(int);
         void Predict(void);
@@ -55,16 +62,17 @@ class EchoStateNetwork : public DiscreteTimeSeries {
 
         void SetB (double _b) {b=_b;}
         double GetB () {return b;}
-        void RandomParms (double, double); 
+        void RandomParms (double, double, double); 
         double PlotRidgeTrace();
         void Listen();
+        int In_Series_Dim (void) {return in_series->Dim();}
 };
 
 class BakersMap : public DiscreteTimeSeries {
     protected:
         double a, c;
-        xdouble x=2/(pi*pi);
-        xdouble y=.5;
+        xdouble x=xdouble(3)/xdouble(255);
+        xdouble y=xdouble(192)/xdouble(255);
 
     public:
         BakersMap (Vector start, int steps, double _a, double _c)
