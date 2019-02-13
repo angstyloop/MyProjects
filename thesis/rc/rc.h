@@ -17,7 +17,7 @@ class DiscreteTimeSeries {
             //prev = curr++;=0
         
         // need this here for polymorphism with EchoStateNetwork
-        virtual Vector OG_Series (int i) { return (*this)[0]; }
+        virtual Vector O_Series (int i) { return (*this)[0]; }
 
         virtual void Wash (int);
         const int& Dim() const {return d;}
@@ -38,7 +38,7 @@ Matrix<double> RidgeRegress(Matrix<double>, Matrix<double>, double);
 class EchoStateNetwork : public DiscreteTimeSeries {
     protected:
         DiscreteTimeSeries* in_series; 
-        Vector** og_series;
+        Vector** o_series;
         Matrix<double> W, W_in, W_out;
         const Vector offset;
         double b;
@@ -53,7 +53,7 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void PrintTr_Series(void);
         void PrintPred_Series(void);
         Vector In_Series(int i) {return (*in_series)[i];}
-        Vector OG_Series (int i) {return *(og_series[i]);}
+        Vector O_Series (int i) {return *(o_series[i]);}
         void RidgeTrace(Matrix<double>**, int, double);
         void Wash(int);
         void Predict(void);
@@ -65,6 +65,8 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void RandomParms (double, double, double); 
         double PlotRidgeTrace();
         void Listen();
+        void Load(double**, int, int);
+        void Drive(DiscreteTimeSeries*);
         int In_Series_Dim (void) {return in_series->Dim();}
 };
 

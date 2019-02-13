@@ -44,6 +44,62 @@ void DiscreteTimeSeries::PrintSeries() {
     }
 }
 
+// load in a 2-d array where the columns are vectors
+void EchoStateNetwork::Load(double** arr, int _d, int _L) {
+    if ( _d != in_series->Dim() || _L != steps ){
+        std::cout << "size of 2d array must match length and dimension of in_series" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i=0; i<steps; ++i)
+        for (int j=0; j<d; ++j)
+           (*in_series)[i][j] = arr[j][i]; 
+}
+
+// do what listen does while also writing to o_series
+void EchoStateNetwork::Drive(DiscreteTimeSeries* novel_series) {
+    int begin = 0;
+    Vector temp(in_series->Dim());
+
+    // re-random esn start
+    //(*this)[0].random(this->d,-1, 1);
+
+    // replace in_series with novel_series
+    delete in_series;
+    in_series = novel_series;
+
+    while (curr<steps) {
+        // generate response output vector
+        temp = W_out * (*this)[prev]; 
+
+        
+        // save the response output vector for later so we can compare
+        *(o_series[in_series->PrevIndex()]) = temp;
+
+
+        //Call map to iterate hidden indices
+        Map();
+
+    } 
+
+    //one more time to get the last predicted output 
+    temp = W_out*(*this)[prev];
+
+    // save the original input for later so we can compare
+    *(o_series[in_series->PrevIndex()]) = in_series->Prev();
+    (*in_series)[in_series->PrevIndex()] = temp;
+    
+    //set hidden indices up for subsequent printing/graphing.
+    //begin should be the index of the first predicted vector;
+    //curr should be the index of the last training vector;
+    prev = begin;
+    in_series->SetPrev(prev);
+    curr = prev+1;
+    in_series->SetCurr(curr);
+
+
+}
+
 
 // observes comps components starting at index curr and continuing until the end of series is
 //   reached, with the other components being continually provided.
@@ -75,21 +131,25 @@ void EchoStateNetwork::Observe(int* comps, int L) {
     // populate the series, swapping out the appropriate components of the input vectors
     //  after each step
     while (curr<steps) {
-        // edit: this should go at the end 
-        ////remember, this increments curr and thus controls the loop
-        //Map(); 
+        //helpful error message
+        if (v.len()!=in_series->Prev().len()) {
+            std::cout << "Observe(): invalid Vector assignment. Wrong lengths." << std::endl;
+            exit(EXIT_FAILURE);    
+        }
+
+        // save the original input for later so we can compare
+        *(o_series[in_series->PrevIndex()]) = in_series->Prev();
+
+        //generate approximation to the previous input vector
+        v = W_out * (*this)[prev]; 
+
         // replace whatever components with those from W_out * reservoir_state
         for (int i=0; i<L; ++i) {
             // index of a particular component
             j = comps[i]; 
-            //generate approximation to the previous input vector
-            v = W_out * (*this)[prev]; 
-            //helpful error message
-            if (v.len()!=in_series->Prev().len()) {
-                std::cout << "Observe(): invalid Vector assignment. Wrong lengths." << std::endl;
-                exit(EXIT_FAILURE);    
-            }
 
+            // attn!  save original input to o_series
+            
             in_series->SetPrevComp(j,v[j]); //sub in the approximated components for the corresponding
                                           // components in the previous input vector, which will be 
                                           // used to generate a new current input vector next time we 
@@ -99,6 +159,32 @@ void EchoStateNetwork::Observe(int* comps, int L) {
         //  prev = curr - 1;
         Map();
     }
+
+    //one more time to get the last predicted output ...
+
+    //generate approximation to the previous input vector
+    v = W_out * (*this)[prev]; 
+    
+    // save the original input for later so we can compare
+    *(o_series[in_series->PrevIndex()]) = in_series->Prev();
+
+    // replace whatever components with those from W_out * reservoir_state
+        for (int i=0; i<L; ++i) {
+            // index of a particular component
+            j = comps[i]; 
+            in_series->SetPrevComp(j,v[j]); 
+        }
+
+    
+    //set hidden indices up for subsequent printing/graphing.
+    //begin should be the index of the first predicted vector;
+    //curr should be the index of the last training vector;
+    prev = begin;
+    in_series->SetPrev(prev);
+    curr = prev+1;
+    in_series->SetCurr(curr);
+
+    
     // reset the hidden indices, so we can graph real vs. observed starting at begin+1.
     prev = begin;
     curr = prev + 1;
@@ -170,10 +256,10 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
         in_series->SetCurr(1);
         in_series->SetPrev(0);
 
-        //initialize og_series
-        og_series = new Vector*[steps];
+        //initialize o_series
+        o_series = new Vector*[steps];
         for (int i=0; i<steps; ++i)
-            og_series[i] = new Vector(in_series->Dim());
+            o_series[i] = new Vector(in_series->Dim());
 
       }
       
@@ -215,7 +301,7 @@ void EchoStateNetwork::Predict (void) {
         temp = W_out * (*this)[prev]; 
 
         // save the original input for later so we can compare
-        *(og_series[in_series->PrevIndex()]) = in_series->Prev();
+        *(o_series[in_series->PrevIndex()]) = in_series->Prev();
 
         // swap out each component of the input vector for the predicted input vector.
         //  I use a for loop here just so it looks exactly like Observe()
@@ -236,7 +322,7 @@ void EchoStateNetwork::Predict (void) {
     temp = W_out*(*this)[prev];
 
     // save the original input for later so we can compare
-    *(og_series[in_series->PrevIndex()]) = in_series->Prev();
+    *(o_series[in_series->PrevIndex()]) = in_series->Prev();
     (*in_series)[in_series->PrevIndex()] = temp;
     
     //set hidden indices up for subsequent printing/graphing.
@@ -339,4 +425,24 @@ void ScalarFunction::Map(void) {
     const double start = (*this)[0][0];
     (*this)[curr][0] = f(start + curr * stp_sz);
     prev = curr++;
+}
+
+// save 2-d array of Vectors from DiscreteTimeSeries *sine to a (tposed) 2-d array sine_series
+void Save_Pred (double** pred_series, EchoStateNetwork* esn) {
+    // save sine_series; write a function Save(double sine_series**, DiscreteTimeSeries* sine);
+    for (int i=0; i<esn->In_Series_Dim(); ++i) {
+        for (int j=0; j<esn->Steps(); ++j) {
+            pred_series[i][j] = esn->In_Series(j)[i];
+        }
+    }
+}
+
+// to save original series to compare to predicted series later
+void Save_OG (double** o_series, EchoStateNetwork* esn) {
+    for (int i=0; i<esn->In_Series_Dim(); ++i) {
+        for (int j=0; j<esn->Steps(); ++j) { 
+            o_series[i][j] = esn->O_Series(j)[i];
+            //std::cout << o_series[i][j] << std::endl;
+        }
+    }
 }
