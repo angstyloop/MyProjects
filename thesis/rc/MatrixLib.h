@@ -421,6 +421,12 @@ class Vector : public Matrix<double> {
         }
         const int& len() const {return length;}
 
+        static Vector ZeroVector (int dim) {
+            Vector temp(dim);
+            temp.zero();
+            return temp;
+        }
+
             
 };
 

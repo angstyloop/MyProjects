@@ -7,7 +7,7 @@
 // DiscreteTimeSeries class method definitions
 
 // constructor
-DiscreteTimeSeries::DiscreteTimeSeries (Vector start, const int& s )
+DiscreteTimeSeries::DiscreteTimeSeries (Vector start, int s )
     // data members
     : prev (0)
     , curr (1)

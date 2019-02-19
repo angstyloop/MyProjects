@@ -9,12 +9,12 @@ class DiscreteTimeSeries {
         int prev, curr, steps, d;
         Vector** series;
     public:
-        DiscreteTimeSeries ( Vector, const int& );
+        DiscreteTimeSeries ( Vector init_cond, int steps );
         virtual ~DiscreteTimeSeries () {if (series!=nullptr) delete[] series;}
         Vector& operator[] (const int);
         virtual void Map(void) =0; 
-            //series[curr] = f (series[prev]);;
-            //prev = curr++;=0
+            //series[curr] = f (series[prev]);
+            //prev = curr++;
         
         // need this here for polymorphism with EchoStateNetwork
         virtual Vector O_Series (int i) { return (*this)[0]; }
@@ -134,8 +134,12 @@ class ScalarFunction : public DiscreteTimeSeries {
         void SetStepSize(double _stp_sz) {stp_sz=_stp_sz;}
 };
 
-//debuggin 
-/*int main() {
-    Matrix<double> M (5,5);
-    
-}*/
+class DataSeries : public DiscreteTimeSeries {
+    public:
+        DataSeries (int _d, int _steps)
+            : DiscreteTimeSeries(Vector::ZeroVector(_d), _steps) {}
+
+        void Map() {prev=curr++;}
+
+};
+
