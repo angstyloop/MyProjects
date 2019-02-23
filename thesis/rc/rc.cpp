@@ -260,33 +260,34 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
         o_series = new Vector*[steps];
         for (int i=0; i<steps; ++i)
             o_series[i] = new Vector(in_series->Dim());
-
+        
+        // fill W_in with sigma (=1)
+        W_in.Fill(sigma);
       }
       
 
 //double LargLyapunov()
 
-void EchoStateNetwork::RandomParms(double W_in_dens, double W_dens, double sigma){
-    double eig;
-    double c = W_in_dens*W_in.ncol*W_in.nrow;
-    W_in_dens>.5 ? W.DenseRandom(floor(c))
-                 : W_in.random(floor(c),-sigma, sigma); 
-    
-    // Calculate largest eigenvalue of rand W, and if it's nan, re-random W
+// generate random W_in where each entry is 1 or -1
+void EchoStateNetwork::RandomW_in() {
+    W_in.RandomSigns();
+}
+
+// Generate a random W with entries from the interval [-1,1].
+//  (EchoStateNetwork::Map() does the multiplying with the spectral radius,
+//   as well as the sparsifying)
+void EchoStateNetwork::RandomW() {
+    double  eig;
+
+    // Calculate largest eigenvalue of random W, and if it's nan, re-random W
     // and recalculate eigenvalue until it is a good value.
     do {
-        c = W_dens*W.ncol*W.nrow;
-        W_dens>.5 ? W.DenseRandom(int(floor(c)))
-                  : W.random(floor(c),-1,1); //The densty really affects inv alg
+        W.RandomReals();
         eig = abs(W.LargEigvl()); 
     } while (isnan(eig) || eig<EPS);
      
-    // Divide by largest eigenvalue and multiply by spec_rad<1 to ensure
-    //    echo state property. spec_rad set to .9 by default. use getter/
-    //    setter methods to change it.
-    for (int i=0; i<W.nrow; ++i)
-        for (int j=0; j<W.ncol; ++j)
-            W[i][j] *= spec_rad/c;
+    // Divide by largest eigenvalue 
+    W = (1./eig) * W;
 }
 
 // should work like Observe(); picks up where Wash() left off.
@@ -334,6 +335,60 @@ void EchoStateNetwork::Predict (void) {
     in_series->SetCurr(curr);
 }
 
+void EchoStateNetwork::Tune() {
+    const int& 
+            N_max   = 1002
+        ,   dN  = 100
+        ,   short_run = 10
+        ,   long_run  = 100;
+        ;
+
+    int N = N_max;
+
+    const double&
+            B_max   = 1
+        ,   dB      = .1
+        ,   s_max   = 1
+        ,   ds      = .1
+        ,   p_max   = 1
+        ,   dp      = .1
+        ;
+
+    double  error = DBL_MAX
+        ,   B = B_max
+        ,   s = s_max
+        ,   p = p_max
+        ;
+
+    // generate many echo state networks in order to minimize
+    //  the error = abs. val. of the difference between the
+    //  first short_run predicted/actual terms + difference in abs.
+    //  val of long_run predicted/actual terms
+
+    // we use one echo state network object and change the
+    //  parameters using setter methods. we only generate
+    //  the entries of W once, and the density is modified
+    //  by zeroing out. we also only generate the signs of
+    //  the input weights once.
+    
+    for (; N>1; N-=dN) {
+        for (; p>0; p-=dp) {
+            for (; s>0; s-=ds) {
+                for (; B>0; B-=dB)
+                    // Do basically what lorenz_echo.cpp does,
+                    //  but compute error instead of printing.
+
+                    // If error is smaller, save new optimal,
+                    //  values.
+                    ; 
+            }
+        }
+    }
+
+    // write optimal values to file
+
+}
+
 void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N, double db=.1) {
     b=0;
     for (int i=0; i<N; ++i) {
@@ -364,9 +419,11 @@ void EchoStateNetwork::PrintPred_Series (void) {
 }
 
 void EchoStateNetwork::Map (void) { 
-    
+    // copy W to A and apply density restriction to A.
+    Matrix<double> A = W.RandomZeroes(int((1.-dens)*W.nrow*W.ncol));
+
     // in_series lags this->series by 1. series[0] is r_0. in_series[0] is the first input
-    (*this)[curr] =  W_in * in_series->Prev() + W * (*this)[prev] + offset;  
+    (*this)[curr] =  sigma * W_in * in_series->Prev() + spec_rad * A * (*this)[prev] + offset;  
     in_series->Map();
     prev = curr++;
      

@@ -41,8 +41,10 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         Vector** o_series;
         Matrix<double> W, W_in, W_out;
         const Vector offset;
-        double b;
-        double spec_rad = 0.9;
+        double  sigma    = 1        //     
+            ,   b        = .00001
+            ,   dens     = .5
+            ,   spec_rad = 0.9;
     public:
         EchoStateNetwork (Vector, DiscreteTimeSeries*, const int&);
         void Map(void);
@@ -56,13 +58,33 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         Vector O_Series (int i) {return *(o_series[i]);}
         void RidgeTrace(Matrix<double>**, int, double);
         void Wash(int);
+
         void Predict(void);
+        void Tune();
+
+        // setters and getters
+
         void SetSpecRad (double rad) {spec_rad = rad;};
         double SpecRad (void) {return spec_rad;}
 
         void SetB (double _b) {b=_b;}
         double GetB () {return b;}
+
+        void SetSigma (double _sigma);
+        double GetSigma () {return sigma;}
+
+        void SetDens (double _dens) {dens=_dens;}
+        double GetDens () {return dens;}
+
+        // generate random W_in where each entry is -1 or 1
+        void RandomW_in ();
+
+        // generate random internal matrix from interval [-1,1]
+        void RandomW ();
+        
+        // generate random W and W_in from a real interval (instead of int)
         void RandomParms (double, double, double); 
+
         double PlotRidgeTrace();
         void Listen();
         void Load(double**, int, int);

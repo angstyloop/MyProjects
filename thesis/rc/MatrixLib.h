@@ -11,6 +11,9 @@
 #define EPS .000000001
 #define HT_LIM
 
+// seed for random generator stuff
+std::random_device rd;
+
 // dynamically-allocated, real-valued matrix class
 template <class type>
 class Matrix {
@@ -127,8 +130,6 @@ class Matrix {
             return P;
         }  
        
-
-
         // delete multiplication assignment for matrices
         Matrix& operator*= (const Matrix& rhs) = delete;
 
@@ -257,11 +258,13 @@ class Matrix {
         Matrix cholesky();
 
         void random(int, double begin=-1, double end=1); 
+        void RandomSigns ();
 
         //set all entries to zero
         void zero();
 
-        void DenseRandom(int);
+        Matrix<double> RandomZeroes(int);
+        void RandomReals();
 
         void GenerateSymmetricReservoir (Matrix&, Matrix&, double);
 
@@ -307,6 +310,16 @@ class AugMatrix : public Matrix<double> {
         }
         
 };
+
+// define scalar * matrix multiplication
+Matrix<double> operator*(double c, Matrix<double>& m) {
+    Matrix<double> res (m.nrow, m.ncol);
+    for (int i=0; i<m.nrow; ++i)
+        for (int j=0; j<m.ncol; ++j)
+            res[i][j] = c * m[i][j];
+    return res;
+}
+
 
 // concatenate two matrices L and R
 template <class type>
@@ -444,8 +457,6 @@ Vector operator*(double c, Vector v) { return v*c; }
 
 
 
-// seed for random generator stuff
-std::random_device rd;
 
 template <class type>
 void Matrix<type>::rmultiply (int i, type c) {
@@ -596,6 +607,19 @@ void Matrix<double>::random(int dens, double begin, double end) {
     }
 }
 
+// generate random signs for entries of a matrix
+template<>
+void Matrix<double>::RandomSigns() {
+    int c;
+    std::default_random_engine i_gen(rd());
+    std::uniform_int_distribution<int> i_dist (0, 1);
+    for (int i=0; i<nrow; ++i)
+        for (int j=0; j<ncol; ++j) {
+            c = i_dist(i_gen);
+            (*this)[i][j] = c==0? -1.*(*this)[i][j] : 1.*(*this)[i][j];
+        }
+}
+
 // this is just Fisher-Yates shuffle: selects k integers randomly from an array of integers 0..n-1.
 int* RandomSelect(int n, int out[], int k) {
     // indices
@@ -634,35 +658,100 @@ T* RandomSelect(T S[], int n, T out[], int k) {
     return out; // return selected objects
 }
 
+// zero z random entries in a matrix
 template <>
-void Matrix<double>::DenseRandom(int dens) {
-    int i, k=0, p=nrow*ncol; //Indices and num. entries.
-    int** picked_pairs = new int*[dens];    // to hold randomly selected pairs
-    int** ij_pairs = new int*[p]; //To store all pairs.
-    for (i=0; i<p; ++i) {
-        ij_pairs[i] = new int[2]; 
-    }
-    // initialize matrix to zeroes
-    zero();
-    //random generator stuff
-    //random_device rd;
-    std::default_random_engine gen(rd());
-    std::uniform_real_distribution<double> dist(-1,1);
-    //auto roll = std::bind(dist, gen); 
+Matrix<double> Matrix<double>::RandomZeroes(int z) {
 
-    for (i=0; i<nrow; ++i) {    // Generate [i,j] pairs
+    Matrix res = (*this);  //result 
+
+    const int& p = nrow*ncol; //num. entries.
+
+    // if z is less than half the number of entries,
+    //  just keep picking random entries until one
+    //  does not result in a collision.
+    if (z < p/2) {
+        // pick two random indices
+        std::default_random_engine 
+                i_gen(rd())
+            ,   j_gen(rd())
+            ;
+        std::uniform_int_distribution<int> 
+                i_dist (0, nrow-1)
+            ,   j_dist (0, ncol-1)
+            ;
+
+        int     i = i_dist(i_gen)
+            ,   j = j_dist(j_gen)
+            ,   k = 0
+            ;
+
+        while (k<z) {
+            if (res[i][j] > 0) {
+                res[i][j] = 0;
+                ++k;
+            }
+        }
+        return res;
+    }
+    
+    // otherwise use fisher-yates shuffle to randomly select
+    //  z pairs (i,j) without repeating
+
+    int     i = 0   // indices
+        ,   k = 0
+        ;
+    int** picked_pairs = new int*[z];    // to hold randomly selected pairs
+    int** ij_pairs = new int*[p];        // to store all pairs.
+    for (i=0; i<p; ++i) 
+        ij_pairs[i] = new int[2]; 
+    
+    for (i=0; i<nrow; ++i) {             // Generate [i,j] pairs
         for (int j=0; j<ncol; ++j) {
             ij_pairs[k][0] = i; 
             ij_pairs[k++][1] = j;
         }
     }
-    // randomly select dens pairs from all pairs
-    picked_pairs = RandomSelect<int*>(ij_pairs, p, picked_pairs, dens);
-    // assign randomly from [-1,1] to each picked entry
-    for (i=0; i<dens; ++i) {
-        M[picked_pairs[i][0]][picked_pairs[i][1]] = dist(gen);
+
+    // randomly select z pairs from all pairs
+    picked_pairs = RandomSelect<int*>(ij_pairs, p, picked_pairs, z);
+    
+    // zero the entry corresponding to each selected pair
+    for (i=0; i<z; ++i) {
+        res[picked_pairs[i][0]][picked_pairs[i][1]] = 0;
     }
+
+    // clean up dynamic memory
+    for (i=0; i<p; ++i) 
+        delete ij_pairs[i];
+    delete[] ij_pairs;;
+
+    for (i=0; i<z; ++i)
+        delete picked_pairs[i];
+    delete[] picked_pairs[i];;
+
+    // return the matrix of density nrow*ncol - z
+    return res;
 }
+
+// fill matrix with random real entries from interval [-1,1]
+template <>
+void Matrix<double>::RandomReals() {
+
+    std::default_random_engine 
+        x_gen(rd())
+        ;
+
+    std::uniform_real_distribution<double>
+        x_dist (-1, 1)
+        ;
+
+    // assign a random real number to each entry
+    for (int i=0; i<nrow; ++i)
+        for (int j=0; j<ncol; ++j)
+            M[i][j] = x_dist(x_gen); //random real
+}
+
+
 
 // generate the eigendecomposition of a symmetric reservoir matrix, such that the orthogonal matrix
 //  consists of random entries except for zeroes on the diagonal, and the diagonal matrix contains random
