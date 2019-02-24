@@ -7,24 +7,20 @@
 // DiscreteTimeSeries class method definitions
 
 // constructor
-DiscreteTimeSeries::DiscreteTimeSeries (Vector start, int s )
+DiscreteTimeSeries::DiscreteTimeSeries (Vector _start, int s )
     // data members
     : prev (0)
     , curr (1)
     , steps (s)
-    , d (start.len())
-    , series (new Vector*[s]) {     //This line right here is the reason series is a Vector**
-                                    //  instead of a Vector[]; I can't write stuff like
-                                    //  new Vector(d)[s], and I want dynamically sized vectors.
-                                    //  A different approach would be to make Vector a template class,
-                                    //  and then use a Vector of Vector.
+    , d (_start.len())
+    , max_d (_start.len())
+    , series (new Vector*[s]) 
+    , start (_start) {     
                                     
-        // initialize the vectors pointed to by the entries of series[]
-        int l = start.len();
         for (int i=0; i<s; ++i) {
-            series[i] = new Vector(l);
+            series[i] = new Vector(d);
         }
-        // make series[0] point to start. see DiscreteTimeSeries::operator[].
+
         (*this)[0] = start;
 
     }
@@ -249,7 +245,7 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
       , W (d, d)
       , W_in (d, _in_series->Dim())
       , W_out (_in_series->Dim(), d)
-      , offset (Offset(this->Dim())) {
+      , offset (Offset(d)) {
 
         // initialize "current" and "previous" indices of in_series, just in case they're outta
         //  wack. if the indices aren't right then listen() will be wrong
@@ -340,10 +336,14 @@ void EchoStateNetwork::Tune() {
             N_max   = 1002
         ,   dN  = 100
         ,   short_run = 10
-        ,   long_run  = 100;
+        ,   long_run  = 100
+        ,   wsteps  =   1000
+        ,   tsteps  =   1000
         ;
 
-    int N = N_max;
+    int     N    = N_max
+        ,   N_op = N_max;   
+        ;
 
     const double&
             B_max   = 1
@@ -354,10 +354,13 @@ void EchoStateNetwork::Tune() {
         ,   dp      = .1
         ;
 
-    double  error = DBL_MAX
-        ,   B = B_max
-        ,   s = s_max
-        ,   p = p_max
+    double  min_error = DBL_MAX
+        ,   B    = B_max
+        ,   B_op = B_max
+        ,   s    = s_max
+        ,   s_op = s_max
+        ,   p    = p_max
+        ,   p_op = p_max
         ;
 
     // generate many echo state networks in order to minimize
@@ -365,28 +368,117 @@ void EchoStateNetwork::Tune() {
     //  first short_run predicted/actual terms + difference in abs.
     //  val of long_run predicted/actual terms
 
-    // we use one echo state network object and change the
-    //  parameters using setter methods. we only generate
-    //  the entries of W once, and the density is modified
-    //  by zeroing out. we also only generate the signs of
-    //  the input weights once.
+    Vector esn_start (N_max);
+    esn_start.RandomReals();
     
+    EchoStateNetwork esn (esn_start, in_series, steps);
+    esn.RandomW();
+
     for (; N>1; N-=dN) {
+
         for (; p>0; p-=dp) {
+
+            esn.SetDens(p);
+
             for (; s>0; s-=ds) {
-                for (; B>0; B-=dB)
+
+                esn.SetSigma(s);
+
+                for (; B>0; B-=dB) {
+
+                    esn.SetB(b);
+
                     // Do basically what lorenz_echo.cpp does,
                     //  but compute error instead of printing.
+                    
+                    Listen();
+                    Wash(wsteps);
+                    Train(tsteps);
+                    Predict();
 
-                    // If error is smaller, save new optimal,
+                    double error = 0;
+
+                    // sum the square differences of the first short_run
+                    //  points in in_series and o_series
+                    for (int i=0; i<short_run; ++i) {
+                        for (int j=0; j<In_Series_Dim(); ++j) {
+                            error += ( (*in_series)[i][j] - (*o_series)[i][j] ) 
+                                  * ( (*in_series)[i][j] - (*o_series)[i][j] );
+                        }
+                    }
+
+                    double in_max = 0;
+                    double o_max = 0;
+                    double temp = 0;
+
+                    // get the highest abs value term from the short_run number
+                    //  of terms starting at the long_runth term of *in_series
+                    for (int i=0; i<short_run; ++i) {
+                        temp = (*in_series)[long_run-1+i].Norm();
+                        if (temp > in_max)
+                            in_max = temp;
+                    }
+
+                    // get the max for *o_series
+                    for (int i=0; i<short_run; ++i) {
+                        temp = (*o_series)[long_run-1+i].Norm();
+                        if (temp > o_max)
+                            o_max = temp;
+                    }                    
+                    
+                    // add the square difference in the maxes to error
+                    error += (o_max - in_max) * (o_max - in_max);
+
+                    // If error is smaller than min_error, save new optimal
                     //  values.
-                    ; 
-            }
-        }
+                    if (error < min_error) {
+                        min_error = error;
+                        N_op = N;
+                        B_op = B;
+                        s_op = s;
+                        p_op = p;
+                    }
+                } // end of loop
+            } // end of loop
+        } // end of loop
+
+        // reduce the internal dimension of all vectors/matrices
+        //  by one.
+        Shrink();
+
+    } // end of N loop
+
+    // restore the internal dimension of all vectors/matrices
+    //  to it's max value
+        Restore(); 
+
+    // adopt optimal values
+    SetB(B_op);
+    SetSigma(s_op);
+    SetDens(p_op); 
+
+    // to effectively change N...
+    d = N_op;
+
+    // need to write a method called compress that reallocates and copies
+    //  to get rid of extra space and set max_d to current d.
+    W.setnrow(d);
+    W.setncol(d);
+    //W.compress();
+    
+    W_in.setnrow(d);
+    //W_in.compress();
+    
+    W_out.setncol(d);
+    //W_out.compress();
+    
+    offset.setnrow(d);
+    //offset.compress();
+
+    for (int i=0; i<steps; ++i) {
+        (*this)[i].setncol(d);
+        //(*this)[i].compress();
     }
-
-    // write optimal values to file
-
 }
 
 void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N, double db=.1) {
@@ -420,7 +512,7 @@ void EchoStateNetwork::PrintPred_Series (void) {
 
 void EchoStateNetwork::Map (void) { 
     // copy W to A and apply density restriction to A.
-    Matrix<double> A = W.RandomZeroes(int((1.-dens)*W.nrow*W.ncol));
+    Matrix<double> A = W.RandomZeroes(int((1.-dens)*W.nrow()*W.ncol()));
 
     // in_series lags this->series by 1. series[0] is r_0. in_series[0] is the first input
     (*this)[curr] =  sigma * W_in * in_series->Prev() + spec_rad * A * (*this)[prev] + offset;  
@@ -485,21 +577,19 @@ void ScalarFunction::Map(void) {
 }
 
 // save 2-d array of Vectors from DiscreteTimeSeries *sine to a (tposed) 2-d array sine_series
-void Save_Pred (double** pred_series, EchoStateNetwork* esn) {
-    // save sine_series; write a function Save(double sine_series**, DiscreteTimeSeries* sine);
-    for (int i=0; i<esn->In_Series_Dim(); ++i) {
-        for (int j=0; j<esn->Steps(); ++j) {
-            pred_series[i][j] = esn->In_Series(j)[i];
+void EchoStateNetwork::Save_Pred (double** pred_series) {
+    for (int i=0; i<this->In_Series_Dim(); ++i) {
+        for (int j=0; j<this->Steps(); ++j) {
+            pred_series[i][j] = this->In_Series(j)[i];
         }
     }
 }
 
 // to save original series to compare to predicted series later
-void Save_OG (double** o_series, EchoStateNetwork* esn) {
-    for (int i=0; i<esn->In_Series_Dim(); ++i) {
-        for (int j=0; j<esn->Steps(); ++j) { 
-            o_series[i][j] = esn->O_Series(j)[i];
-            //std::cout << o_series[i][j] << std::endl;
+void EchoStateNetwork::Save_OG (double** o_series) {
+    for (int i=0; i<this->In_Series_Dim(); ++i) {
+        for (int j=0; j<this->Steps(); ++j) { 
+            o_series[i][j] = this->O_Series(j)[i];
         }
     }
 }

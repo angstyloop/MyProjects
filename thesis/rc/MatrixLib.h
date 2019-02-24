@@ -19,35 +19,57 @@ template <class type>
 class Matrix {
     protected:
         type** M;
+        int max_row, max_col;
+        int n_row, n_col;
     public:
-        int nrow, ncol;
+        // getters / setters
+        const int nrow() const {return n_row;}
+        void setnrow (int _n_row) {n_row=_n_row;}
+
+        const int ncol() const {return n_col;}
+        void setncol (int _n_col) {n_col=_n_col;}
+
+        const int maxrow() const {return max_row;}
+        void setmaxrow (int _max_row) {max_row=_max_row;} 
+
+        const int maxcol() const {return max_col;}
+        void setmaxcol (int _max_col) {max_col=_max_col;}
+
+        // use fixed maximum matrix dimensions maxcol()*maxrow() when
+        //  deleting/allocating.
+        
         // constructors
 
-        Matrix () : nrow(0), ncol(0) {}
+        Matrix () : max_row(0), max_col(0), n_row(0), n_col(0) {}
 
-        Matrix (int r, int c) : nrow(r), ncol(c) {
-            M = new type*[nrow];
-            for (int i=0; i<nrow ; ++i)
-                M[i] = new type[ncol];
+        Matrix (int r, int c) : max_row(r), max_col(c), n_row(r), n_col(c) {
+            M = new type*[maxrow()];
+            for (int i=0; i<maxrow() ; ++i)
+                M[i] = new type[maxcol()];
         }
-        Matrix (int r, int c, const Matrix& other) : nrow(r), ncol(c) {
-            if (r!=other.nrow || c!=other.ncol) {
+
+        Matrix (int r, int c, Matrix other) : max_row(r), max_col(c), n_row(r), n_col(c) {
+            if (r!=other.maxrow() || c!=other.maxcol()) {
                 std::cout << "invalid constructor of Matrix from Matrix. different sizes.";
                 exit(EXIT_FAILURE);
             }
-            M = new type*[nrow];
-            for (int i=0; i<nrow ; ++i)
-                M[i] = new type[ncol];
+            M = new type*[maxrow()];
+            for (int i=0; i<maxrow() ; ++i)
+                M[i] = new type[maxcol()];
             *this = other;
         }
 
         // copy constructor
 
-        Matrix (const Matrix& other) : nrow(other.nrow), ncol(other.ncol) {
-            M = new type*[nrow];
-            for (int i=0; i<nrow; ++i) {
-                M[i] = new type[ncol];
-                for (int j=0; j<ncol; ++j)
+        Matrix (Matrix& other) 
+            : max_row(other.max_row)
+            , max_col(other.max_col) 
+            , n_row(other.n_row)
+            , n_col(other.n_col) { 
+            M = new type*[nrow()];
+            for (int i=0; i<maxrow(); ++i) {
+                M[i] = new type[maxcol()];
+                for (int j=0; j<maxcol(); ++j)
                     M[i][j] = other.M[i][j];
             }
         }  
@@ -55,7 +77,7 @@ class Matrix {
         // destructor
         virtual ~Matrix () {
             if (M != nullptr) {
-            for (int i=0; i<nrow; ++i)
+            for (int i=0; i<maxrow(); ++i)
                 delete[] M[i];
             delete [] M;
             }    
@@ -63,23 +85,27 @@ class Matrix {
 
         
         // copy assignment
-        Matrix& operator= (const Matrix& rhs) {
+        Matrix& operator= (Matrix& rhs) {
             // if matrix dims dont match we have to delete and reallocate
-            if (nrow!=rhs.nrow || ncol!=rhs.ncol) {
+            if (maxrow()!=rhs.maxrow() || maxcol()!=rhs.ncol()) {
                 //delete
-                for (int i=0; i<nrow; ++i)
+                for (int i=0; i<maxrow(); ++i)
                     delete M[i]; 
                 delete M;
+
                 //set new dims
-                nrow = rhs.nrow;
-                ncol = rhs.ncol;
+                setnrow(rhs.nrow());
+                setncol(rhs.ncol());
+                setmaxrow(rhs.maxrow());
+                setmaxcol(rhs.maxcol());
+
                 // reallocate
-                M = new type*[nrow];
-                for (int i=0; i<nrow; ++i)
-                    M[i] = new type[ncol];
+                M = new type*[maxrow()];
+                for (int i=0; i<maxrow(); ++i)
+                    M[i] = new type[maxcol()];
             }
-            for (int i=0; i<nrow; ++i) 
-                for (int j=0; j<ncol; ++j) 
+            for (int i=0; i<maxrow(); ++i) 
+                for (int j=0; j<maxcol(); ++j) 
                     M[i][j] = rhs.M[i][j];
 
             return *this;
@@ -89,7 +115,12 @@ class Matrix {
         //  functions on the rhs of equals sign [e.g. the transpose A.T() ]
         
         // move constructor
-        Matrix (Matrix&& other) : nrow(other.nrow), ncol(other.ncol) {
+        Matrix (Matrix&& other) 
+            :   max_row (other.maxrow())
+            ,   max_col (other.maxcol()) 
+            ,   n_row (other.nrow())
+            ,   n_col (other.ncol()) {
+
             if (this!=&other) {
                 M = other.M;
                 other.M = nullptr;
@@ -99,13 +130,16 @@ class Matrix {
         // move assignment
         Matrix& operator= (Matrix&& other) {
             if (this != &other) {
-                for (int i=0; i<nrow; ++i)
+                for (int i=0; i<maxrow(); ++i)
                     delete[] M[i];
                 delete[] M;
                 M = other.M;
                 other.M = nullptr; // destructor checks for nullptr
-                nrow = other.nrow;
-                ncol = other.ncol;
+
+                setnrow(other.nrow());
+                setncol(other.ncol());
+                setmaxrow(other.maxrow());
+                setmaxcol(other.maxcol());
             }  
             return *this;
         }
@@ -114,17 +148,20 @@ class Matrix {
         type*& operator[] (const int i) { return M[i]; }
         type*& operator[] (const int i) const { return M[i]; }
         
+        // use sliding matrix dimensions nrow() and ncol() in
+        //  matrix operations
+        
         // define matrix multiplication
-        virtual Matrix operator* (const Matrix& rhs) const {
-            if (this->ncol != rhs.nrow) {
+        virtual Matrix operator* (const Matrix& rhs) {
+            if (ncol() != rhs.nrow()) {
                 std::cout << "Invalid matrix multiplication: matrices don't fit." << std::endl;
                 exit(EXIT_FAILURE);
             }
-            Matrix P (this->nrow, rhs.ncol); //result
-            for (int i=0; i<nrow; ++i)   
-                for (int j=0; j<rhs.ncol; ++j) {
+            Matrix P (nrow(), rhs.ncol()); //result
+            for (int i=0; i<nrow(); ++i)   
+                for (int j=0; j<rhs.ncol(); ++j) {
                     P[i][j] = 0;
-                    for (int k=0; k<rhs.nrow; ++k)
+                    for (int k=0; k<rhs.nrow(); ++k)
                         P[i][j] += M[i][k] * rhs.M[k][j]; 
                  } 
             return P;
@@ -135,13 +172,13 @@ class Matrix {
 
         // define matrix addition
         Matrix operator+ (const Matrix& rhs) const {
-            if (ncol != rhs.ncol || nrow != rhs.nrow) {
+            if (ncol() != rhs.ncol() || nrow() != rhs.nrow()) {
                 std::cout << "Invalid matrix addition - wrong sizes" << std::endl;
                 exit(EXIT_FAILURE);
             }
-            Matrix P (nrow, ncol);
-            for (int i=0; i<nrow; ++i)
-                for (int j=0; j<ncol; ++j)
+            Matrix P (nrow(), ncol());
+            for (int i=0; i<nrow(); ++i)
+                for (int j=0; j<ncol(); ++j)
                    P[i][j] = M[i][j] + rhs.M[i][j]; 
             return P;
         }
@@ -152,40 +189,49 @@ class Matrix {
             return *this;
         }
 
-        // neatly print matrix on command line, with optional precision and spacing args
-        virtual void Print (int precision = 10, int spacing = 2) const {
-            for (int i=0; i<nrow; ++i) {
-                for (int j=0; j<ncol; ++j)
+        double Norm () {
+            double res = 0;
+            for (int i=0; i<nrow(); ++i)
+                for (int j=0; j<ncol(); ++j)
+                    res += M[i][j]*M[i][j];
+            return sqrt(res);
+        }
+
+        // neatly print sub matrix on command line, with optional precision and spacing args
+        virtual void Print (int precision = 10, int spacing = 2) {
+            for (int i=0; i<nrow(); ++i) {
+                for (int j=0; j<ncol(); ++j)
                     printf("%.*f%*c", precision,double(M[i][j]), spacing, ' ');
                 std::cout << '\n';
             }
         }
         
-        // fill a matrix from a dynamic 2d array of type values. must specify dimensions
+        // fill a sub matrix from a dynamic 2d array of type values. must specify dimensions
         //  of the array for safety.
         void Fill (type** arr, int r, int c) {
-            if ( r!=nrow || c!=ncol ) {
+            if ( r!=nrow() || c!=ncol() ) {
                 std::cout << "Invalid fill - input wrong size." << std::endl;
                 exit(EXIT_FAILURE);
             } 
 
-            for (int i=0; i<nrow; ++i)
-                for (int j=0; j<ncol; ++j)
+            for (int i=0; i<nrow(); ++i)
+                for (int j=0; j<ncol(); ++j)
                     M[i][j] = arr[i][j];
         }
 
         // fill with a constant instead
         void Fill (double d) {
-            for (int i=0; i<nrow; ++i)
-                for (int j=0; j<ncol; ++j)
+            for (int i=0; i<nrow(); ++i)
+                for (int j=0; j<ncol(); ++j)
                     M[i][j] = d;
         }
 
         // lets user input a matrix at the command line. ignores non-numeric entries
         //  as well those exceeding the number of columns.
         void input () {
-            int r = nrow;
-            int c = ncol;
+            const int& r = nrow();
+            const int& c = ncol();
+
             // allocate 2d dynamic array to hold input floats
             type** arr = new type*[r]; 
             for (int i=0; i<r; ++i) {
@@ -211,7 +257,12 @@ class Matrix {
                     // if the word currently held by temp_str is a newline, then we haven't
                     //  put in enough numerical entries.
                     if (ss.eof() && j<c-1) {
-                        std::cout << "The dimensions must be " << nrow << " x " << ncol << "." << std::endl;
+                        std::cout   << "The dimensions must be " 
+                                    << nrow() 
+                                    << " x " 
+                                    << ncol()
+                                    << "." 
+                                    << std::endl;
                         exit(EXIT_FAILURE);
                     }
 
@@ -233,10 +284,10 @@ class Matrix {
         
         // transpose of a matrix
         
-        const Matrix T () const {
-            Matrix tpose(ncol, nrow); //note reversed order
-            for (int i=0; i<ncol; ++i) {
-                for (int j=0; j<nrow; ++j) {
+        Matrix T () {
+            Matrix tpose(ncol(), nrow()); //note reversed order
+            for (int i=0; i<ncol(); ++i) {
+                for (int j=0; j<nrow(); ++j) {
                     tpose[i][j] = M[j][i]; 
                 }
             }
@@ -275,26 +326,28 @@ class Matrix {
 
 //concatenate two matrices L and R
 template <class type>
-Matrix<type> concat(const Matrix<type>& L, const Matrix<type>& R);
+Matrix<type> concat(Matrix<type>& L, Matrix<type>& R);
 
 class AugMatrix : public Matrix<double> {
     private:
         int acol; // index of the first column of the augmenting matrix  
     public:
-        AugMatrix (const Matrix<double>& L, const Matrix<double>& R) 
-            : Matrix<double>(L.nrow, L.ncol+R.ncol, concat(L, R)), acol(L.ncol) {
-            if (L.nrow!=R.nrow) {
+        AugMatrix (Matrix<double>& L, Matrix<double>& R) 
+            : Matrix<double>(L.nrow(), L.ncol()+R.ncol(), concat(L, R))
+            , acol(L.ncol()) {
+
+            if (L.nrow()!=R.nrow()) {
                 std::cout << "Number of rows must match." << std::endl;
                 exit(EXIT_SUCCESS);
             }
         }
-        void Print (int precision = 1, int spacing = 2) const {
-            for (int i=0; i<nrow; ++i) {
+        virtual void Print (int precision = 1, int spacing = 2) {
+            for (int i=0; i<nrow(); ++i) {
                 for (int j=0; j<acol; ++j)
                     printf("%.*f%*c", precision, double(M[i][j]), spacing, ' ');
                 std::cout << "|";
                 printf("%*c", spacing, ' ');
-                for (int j=acol; j<ncol; ++j)
+                for (int j=acol; j<ncol(); ++j)
                     printf("%.*f%*c", precision, double(M[i][j]), spacing, ' ');
                 std::cout << '\n';
             }
@@ -302,9 +355,9 @@ class AugMatrix : public Matrix<double> {
         // output the augmenting side of the matrix (usually an inverse matrix or
         //  vector solution to a linear equation)
         Matrix getAug () {
-            Matrix temp(nrow, ncol-acol);
-            for (int i=0; i<nrow; ++i)
-                for (int j=0; j<ncol-acol; ++j)
+            Matrix temp(nrow(), ncol()-acol);
+            for (int i=0; i<nrow(); ++i)
+                for (int j=0; j<ncol()-acol; ++j)
                     temp[i][j] = M[i][acol+j];
             return temp;
         }
@@ -313,9 +366,9 @@ class AugMatrix : public Matrix<double> {
 
 // define scalar * matrix multiplication
 Matrix<double> operator*(double c, Matrix<double>& m) {
-    Matrix<double> res (m.nrow, m.ncol);
-    for (int i=0; i<m.nrow; ++i)
-        for (int j=0; j<m.ncol; ++j)
+    Matrix<double> res (m.nrow(), m.ncol());
+    for (int i=0; i<m.nrow(); ++i)
+        for (int j=0; j<m.ncol(); ++j)
             res[i][j] = c * m[i][j];
     return res;
 }
@@ -324,13 +377,13 @@ Matrix<double> operator*(double c, Matrix<double>& m) {
 // concatenate two matrices L and R
 template <class type>
 Matrix<type> concat(const Matrix<type>& L, const Matrix<type>& R) {
-    if (L.nrow!=R.nrow) exit (EXIT_FAILURE);
-        Matrix<type> temp(L.nrow, L.ncol+R.ncol);
-        for (int i=0; i<temp.nrow; ++i) {
-            for (int j=0; j<L.ncol; ++j) 
+    if (L.nrow()!=R.nrow()) exit (EXIT_FAILURE);
+        Matrix<type> temp(L.nrow(), L.ncol()+R.ncol());
+        for (int i=0; i<temp.nrow(); ++i) {
+            for (int j=0; j<L.ncol(); ++j) 
                 temp[i][j] = L[i][j];
-            for (int j=0; j<R.ncol; ++j) 
-                temp[i][L.ncol+j] = R[i][j];
+            for (int j=0; j<R.ncol(); ++j) 
+                temp[i][L.ncol()+j] = R[i][j];
         }
         return temp;
 }
@@ -346,19 +399,21 @@ Matrix<type> Identity(int n) {
 }
 
 class Vector : public Matrix<double> {
-    int length;
+    //int length;
     public:
+        int length() {return nrow();}
+
         //ctors
-        Vector () : length(0) {};
-        Vector (int dim) : Matrix<double>(dim, 1), length(dim) {} // vectors are column  
+        //Vector () {};
+        Vector (int dim) : Matrix<double>(dim, 1) {} // vectors are column  
 
         // copy ctor
-        Vector (const Vector& that) : Matrix<double>(that), length(that.nrow) {} 
+        Vector (Vector& that) : Matrix<double>(that) {} 
       
         // move assignment
         Vector& operator= (Vector&& that) {
             if (this!=&that) {
-                for (int i=0; i<length; ++i)
+                for (int i=0; i<length(); ++i)
                     delete[] M[i];
                 delete M;
                 M = that.M;
@@ -373,7 +428,7 @@ class Vector : public Matrix<double> {
         }
 
         // move ctor
-        Vector (Vector&& that) : Matrix(that.nrow, that.ncol) {
+        Vector (Vector&& that) : Matrix<double>(that.nrow(), that.ncol()) {
             M = that.M;
             that.M = nullptr;
         }
@@ -381,7 +436,7 @@ class Vector : public Matrix<double> {
 
         // copy assignment
         Vector& operator= (Vector& that) {
-            for (int i=0; i<length; ++i)
+            for (int i=0; i<length(); ++i)
                 M[i][0] = that.M[i][0];
             return *this;
         }
@@ -398,12 +453,12 @@ class Vector : public Matrix<double> {
         
         // uses matrix fill
         void Fill (double d) {
-            double** temp = new double*[length];
-            for (int i=0; i<length; ++i) {
+            double** temp = new double*[length()];
+            for (int i=0; i<length(); ++i) {
                 temp[i] = new double[1];
                 temp[i][1] = d;
             }
-            Matrix<double>::Fill(temp, length, 1);
+            Matrix<double>::Fill(temp, length(), 1);
         }
         
         //indices
@@ -411,28 +466,23 @@ class Vector : public Matrix<double> {
 
         //dot product
         double operator*(Vector& that) {
-            if (this->length != that.length) {
+            if (this->length() != that.length()) {
                 std::cout << "Dot product needs two vectors of the same length..." << std::endl; 
                 exit(EXIT_SUCCESS);
             }
             double sum = 0;
-            for (int i=0; i<length; ++i) 
+            for (int i=0; i<length(); ++i) 
                 sum += (*this)[i] * that[i];
             return sum;
-        }
-
-        //norm
-        double Norm (void) { 
-            return sqrt( (*this) * (*this) ); 
         }
 
         // scalar multiplication
         Vector operator*(double c) {
             Vector v = *this;
-            for (int i=0; i<length; ++i) {v[i] *= c;}
+            for (int i=0; i<length(); ++i) {v[i] *= c;}
             return *this; 
         }
-        const int& len() const {return length;}
+        int len() {return length();}
 
         static Vector ZeroVector (int dim) {
             Vector temp(dim);
@@ -460,20 +510,20 @@ Vector operator*(double c, Vector v) { return v*c; }
 
 template <class type>
 void Matrix<type>::rmultiply (int i, type c) {
-    for (int j=0; j<ncol; ++j)
+    for (int j=0; j<ncol(); ++j)
         M[i][j] *= c;
 }
 
 template <class type>
 void Matrix<type>::rsub (int i, int j, type c) {
-    for (int k=0; k<ncol; ++k)
+    for (int k=0; k<ncol(); ++k)
         M[j][k] = M[j][k] + c * M[i][k];
 }
 
 template <class type>
 void Matrix<type>::rswap (int i, int j) {
     double temp;
-    for (int k=0; k<ncol; ++k) {
+    for (int k=0; k<ncol(); ++k) {
         temp = M[i][k];
         M[i][k] = M[j][k];
         M[j][k] = temp;
@@ -493,18 +543,18 @@ double Sqrt(double x) {
 // if M has no nonnegative entries.
 template <>
 Matrix<double> Matrix<double>::cholesky () {
-    if (nrow != ncol) {
+    if (nrow() != ncol()) {
         std::cout << "Need a pos. semidef. real symmetric matrix." << std::endl;
         exit(EXIT_SUCCESS);
     }
     double sum;
-    Matrix L(nrow, ncol);
+    Matrix L(nrow(), ncol());
     // set the first entry
     L[0][0] = Sqrt(M[0][0]);
     // zero out the rest of the first row
-    for (int j=1; j<ncol; ++j)
+    for (int j=1; j<ncol(); ++j)
         L[0][j] = 0;
-    for (int i=1; i<nrow; ++i) {
+    for (int i=1; i<nrow(); ++i) {
         // fill <= the diagonal using cholesky algorithm
         for (int j=0; j<=i; ++j) {
             sum = 0;
@@ -516,7 +566,7 @@ Matrix<double> Matrix<double>::cholesky () {
                 L[i][j] = 1/L[j][j] * (M[i][j] - sum);
         }
         // zero out above the diagonal
-        for (int j=i+1; j<ncol; ++j)
+        for (int j=i+1; j<ncol(); ++j)
             L[i][j] = 0;
     }
     // output the lower triangular matrix
@@ -528,24 +578,24 @@ Matrix<double> Matrix<double>::cholesky () {
 template <>
 void Matrix<double>::forwsub () {
     int i,k;
-    for (i=0; i<nrow; ++i) {
+    for (i=0; i<nrow(); ++i) {
         if (M[i][i] < DBL_MIN) {
             std::cout << "Encountered zero on diagonal. System not invertible." << std::endl;
             exit(EXIT_FAILURE);
         }
         rmultiply(i, 1/M[i][i]);
-        for (k=i+1; k<nrow; ++k)
+        for (k=i+1; k<nrow(); ++k)
             rsub(i, k, -M[k][i]);
     } 
 }
 
 template <>
 Matrix<double> Matrix<double>::inv_cholesky () {
-    if (nrow!=ncol) {
+    if (nrow()!=ncol()) {
         std::cout << "Matrix must be square." << std::endl;
         exit (EXIT_FAILURE);
     }
-    Matrix<double> N = Identity<double>(nrow); // will be the inverse of the cholesky L
+    Matrix<double> N = Identity<double>(nrow()); // will be the inverse of the cholesky L
     Matrix<double> L = cholesky(); // the lower triangular matrix L in cholesky factorization 
     AugMatrix A (L, N);
     A.forwsub();
@@ -555,8 +605,8 @@ Matrix<double> Matrix<double>::inv_cholesky () {
 
 template <class type>
 void Matrix<type>::zero() {
-    for (int i=0; i<nrow; ++i)
-        for (int j=0; j<ncol; ++j)
+    for (int i=0; i<nrow(); ++i)
+        for (int j=0; j<ncol(); ++j)
             M[i][j] = 0;
 }
 // randomly assigns real numbers in the interval [begin, end] to dens randomly selected
@@ -569,7 +619,7 @@ void Matrix<type>::zero() {
 //  begin and end are set to -1 and 1 by default.
 template <>
 void Matrix<double>::random(int dens, double begin, double end) {
-    if (dens > ncol*nrow) {
+    if (dens > ncol()*nrow()) {
         std::cout << "Density must not exceed the number of entries ..." << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -583,11 +633,11 @@ void Matrix<double>::random(int dens, double begin, double end) {
     //auto rand_entry = std::bind(entry_dist, entry_gen);
 
     std::default_random_engine i_gen(rd());
-    std::uniform_int_distribution<int> i_dist (0, nrow-1);
+    std::uniform_int_distribution<int> i_dist (0, nrow()-1);
     //auto rand_i = std::bind(i_dist, i_gen);
 
     std::default_random_engine j_gen(rd());
-    std::uniform_int_distribution<int> j_dist (0, ncol-1);
+    std::uniform_int_distribution<int> j_dist (0, ncol()-1);
     //auto rand_j = std::bind(j_dist, j_gen);
     
     // initialize entries to zero
@@ -613,8 +663,8 @@ void Matrix<double>::RandomSigns() {
     int c;
     std::default_random_engine i_gen(rd());
     std::uniform_int_distribution<int> i_dist (0, 1);
-    for (int i=0; i<nrow; ++i)
-        for (int j=0; j<ncol; ++j) {
+    for (int i=0; i<nrow(); ++i)
+        for (int j=0; j<ncol(); ++j) {
             c = i_dist(i_gen);
             (*this)[i][j] = c==0? -1.*(*this)[i][j] : 1.*(*this)[i][j];
         }
@@ -664,7 +714,7 @@ Matrix<double> Matrix<double>::RandomZeroes(int z) {
 
     Matrix res = (*this);  //result 
 
-    const int& p = nrow*ncol; //num. entries.
+    const int& p = nrow()*ncol(); //num. entries.
 
     // if z is less than half the number of entries,
     //  just keep picking random entries until one
@@ -676,8 +726,8 @@ Matrix<double> Matrix<double>::RandomZeroes(int z) {
             ,   j_gen(rd())
             ;
         std::uniform_int_distribution<int> 
-                i_dist (0, nrow-1)
-            ,   j_dist (0, ncol-1)
+                i_dist (0, nrow()-1)
+            ,   j_dist (0, ncol()-1)
             ;
 
         int     i = i_dist(i_gen)
@@ -705,8 +755,8 @@ Matrix<double> Matrix<double>::RandomZeroes(int z) {
     for (i=0; i<p; ++i) 
         ij_pairs[i] = new int[2]; 
     
-    for (i=0; i<nrow; ++i) {             // Generate [i,j] pairs
-        for (int j=0; j<ncol; ++j) {
+    for (i=0; i<nrow(); ++i) {             // Generate [i,j] pairs
+        for (int j=0; j<ncol(); ++j) {
             ij_pairs[k][0] = i; 
             ij_pairs[k++][1] = j;
         }
@@ -746,8 +796,8 @@ void Matrix<double>::RandomReals() {
         ;
 
     // assign a random real number to each entry
-    for (int i=0; i<nrow; ++i)
-        for (int j=0; j<ncol; ++j)
+    for (int i=0; i<nrow(); ++i)
+        for (int j=0; j<ncol(); ++j)
             M[i][j] = x_dist(x_gen); //random real
 }
 
@@ -767,19 +817,19 @@ void Matrix<double>::GenerateSymmetricReservoir (Matrix<double>& Q, Matrix<doubl
     //auto roll = std::bind(dist, gen); 
         
     double sum_sqrs; // to track the sum of squares of row entries so we can normalize rows
-    for (int i=0; i<nrow; ++i) {
+    for (int i=0; i<nrow(); ++i) {
         sum_sqrs = 0;
         //// randomly assign entries to row i
-        for (int j=0; j<ncol; ++j) {
+        for (int j=0; j<ncol(); ++j) {
             Q[i][j] = i==j ? 0 : dist(gen); 
             sum_sqrs += Q[i][j]*Q[i][j];
         }
         // normalize row i
-        for (int j=0; j<ncol; ++j)
+        for (int j=0; j<ncol(); ++j)
             Q[i][j] /= sqrt(sum_sqrs);
     }
 
-    for (int i=0; i<nrow; ++i)
+    for (int i=0; i<nrow(); ++i)
         D[i][i] = dist(gen);
 
     // use eigenfactorization to generate M
@@ -802,10 +852,10 @@ double Matrix<double>::LargEigvl (void) {
     // defines convergence
     double eps = EPS, prev_eig, curr_eig;
     // temp storage
-    Vector prev(ncol), curr(ncol);
+    Vector prev(ncol()), curr(ncol());
     // random first vector; should use DensRandom here instead.
     do {
-        curr.random(ncol, -1, 1);
+        curr.random(ncol(), -1, 1);
     } while (curr.Norm()<EPS);
     // set first eig to double max so the loop won't end after one iteration
     curr_eig = DBL_MAX;

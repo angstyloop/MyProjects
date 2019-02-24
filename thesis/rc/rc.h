@@ -6,8 +6,16 @@ xdouble pi = boost::math::constants::pi<xdouble>();
 
 class DiscreteTimeSeries {
     protected:
-        int prev, curr, steps, d;
+        int     prev
+            ,   curr
+            ,   steps
+            ,   d
+            ,   max_d
+            ;
+
         Vector** series;
+        Vector start;
+
     public:
         DiscreteTimeSeries ( Vector init_cond, int steps );
         virtual ~DiscreteTimeSeries () {if (series!=nullptr) delete[] series;}
@@ -28,6 +36,30 @@ class DiscreteTimeSeries {
         void SetCurr(int i) {curr = i;}
         void SetPrev(int i) {prev = i;}
         void SetPrevComp(int i, double val) {(*this)[prev][i] = val;}
+
+        void SetStart (Vector _start) {start=_start;}
+        const Vector& GetStart () const {return start;}
+
+        void RandomStart() {start.RandomReals();}
+        
+        // shrink dimension of vectors in esn series by one 
+        virtual void Shrink() { 
+            d = d>0? d-1: 0; 
+            start.setnrow(d);
+            for ( int i=0; i<steps; ++i ){
+                (*this)[i].setnrow(d);
+            }
+        }
+
+        virtual void Restore() { 
+            d = max_d;
+            start.setnrow(d);
+            for ( int i=0; i<steps; ++i ){
+                (*this)[i].setnrow(d);
+            }
+        }
+
+
         void Listen(void);
         void PrintSeries();
         int Steps(void) {return steps;}
@@ -40,7 +72,7 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         DiscreteTimeSeries* in_series; 
         Vector** o_series;
         Matrix<double> W, W_in, W_out;
-        const Vector offset;
+        Vector offset;
         double  sigma    = 1        //     
             ,   b        = .00001
             ,   dens     = .5
@@ -48,6 +80,9 @@ class EchoStateNetwork : public DiscreteTimeSeries {
     public:
         EchoStateNetwork (Vector, DiscreteTimeSeries*, const int&);
         void Map(void);
+
+        void Save_Pred(double**);
+        void Save_OG(double**);
         //fill M with rowvectors obt
         void Train(int);
         void Observe(int[], int);
@@ -62,19 +97,45 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void Predict(void);
         void Tune();
 
+        virtual void Shrink() {
+            // shrink dimension of esn vectors in time series
+            DiscreteTimeSeries::Shrink();
+
+            // shrink ncol and nrow of W
+            W.setnrow(d);
+            W.setncol(d);
+
+            // shrink nrow of W_in
+            W_in.setnrow(d);
+
+            // shrink ncol of W_out
+            W_out.setncol(d); 
+
+            // shrink dimension of offset vector
+            offset.setnrow(d);
+        }
+
+        virtual void Restore() {
+            DiscreteTimeSeries::Restore();
+            W.setnrow(d);
+            W.setncol(d);
+            W_out.setncol(d);
+            offset.setnrow(d);;
+        }
+        
         // setters and getters
 
         void SetSpecRad (double rad) {spec_rad = rad;};
-        double SpecRad (void) {return spec_rad;}
+        const double& SpecRad (void) const {return spec_rad;}
 
         void SetB (double _b) {b=_b;}
-        double GetB () {return b;}
+        const double& GetB () const {return b;}
 
         void SetSigma (double _sigma);
-        double GetSigma () {return sigma;}
+        const double& GetSigma () const {return sigma;}
 
         void SetDens (double _dens) {dens=_dens;}
-        double GetDens () {return dens;}
+        const double& GetDens () const {return dens;}
 
         // generate random W_in where each entry is -1 or 1
         void RandomW_in ();
@@ -115,7 +176,7 @@ class BakersMap : public DiscreteTimeSeries {
 Matrix<double> RidgeRegress(Matrix<double> T, Matrix<double> M, double b) {
     //build the matrix M * M.T() + b * I and invert
     Matrix<double> temp = M.T()*M;
-    for (int i=0; i<temp.ncol; ++i)
+    for (int i=0; i<temp.ncol(); ++i)
         temp[i][i] += b;
     // invert temp and do the remaining matrix multiplications
     return T.T() * M * temp.inv_cholesky();
@@ -131,10 +192,10 @@ Matrix<double> RidgeRegress(Matrix<double> T, Matrix<double> M, double b) {
  }
 
 // convert a double to a 1-d Vector
- const Vector doubleToVector(double d) {
-    Vector* v = new Vector(1);
-    (*v)[0] = d;
-    return *v;
+ Vector doubleToVector(double c) {
+    Vector v (1);
+    v[0] = c;
+    return v;
  }
 
 // a generic class for functions of a single variable like sin(x)
