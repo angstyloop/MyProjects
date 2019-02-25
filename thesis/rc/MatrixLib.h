@@ -35,6 +35,30 @@ class Matrix {
         const int maxcol() const {return max_col;}
         void setmaxcol (int _max_col) {max_col=_max_col;}
 
+        // reallocate M and set max dims to current dims
+        void compress() {
+            double** temp = new double*[n_row];
+
+            // copy the appropriate submatrix of M
+            for (int i=0; i<n_row; ++i) {
+                temp[i] = new double[n_col];
+                for (int j=0; j<n_col; ++j)
+                    temp[i][j] = M[i][j];
+            }
+            
+            // delete M
+            for (int i=0; i<max_row; ++i)
+                delete[] M[i];
+            delete[] M;
+
+            // update max dims
+            max_row = n_row;
+            max_col = n_col;
+
+            // temp is the compressed matrix
+            M = temp;
+        } 
+        
         // use fixed maximum matrix dimensions maxcol()*maxrow() when
         //  deleting/allocating.
         
@@ -326,7 +350,7 @@ class Matrix {
 
 //concatenate two matrices L and R
 template <class type>
-Matrix<type> concat(Matrix<type>& L, Matrix<type>& R);
+Matrix<type> concat(const Matrix<type>& L, const Matrix<type>& R);
 
 class AugMatrix : public Matrix<double> {
     private:
@@ -671,7 +695,7 @@ void Matrix<double>::RandomSigns() {
 }
 
 // this is just Fisher-Yates shuffle: selects k integers randomly from an array of integers 0..n-1.
-int* RandomSelect(int n, int out[], int k) {
+void RandomSelect(int n, int* out, int k) {
     // indices
     int i, j;
     // random number generator
@@ -694,27 +718,31 @@ int* RandomSelect(int n, int out[], int k) {
         if (j<k)
             out[j] = i;
     }
-    return out;
 }
 
 // a template overload of RandomSelect (fisher-yates shuffle)
 template <class T>
-T* RandomSelect(T S[], int n, T out[], int k) {
+void RandomSelect(T* S, int n, T* out, int k) {
     int* integers = new int[k];
-     integers = RandomSelect(n, integers, k); // to hold the output of Randomselect(int,int)
+    RandomSelect(n, integers, k); // to hold the output of Randomselect(int,int)
     for (int i=0; i<k; ++i)
        out[i] = S[integers[i]];  // use the output of original RandomSelect as indices
     delete[] integers;
-    return out; // return selected objects
 }
 
 // zero z random entries in a matrix
 template <>
 Matrix<double> Matrix<double>::RandomZeroes(int z) {
 
-    Matrix res = (*this);  //result 
+    //Matrix res = (*this);  //result 
 
-    const int& p = nrow()*ncol(); //num. entries.
+    // above line might not be working. lets copy explicitly.
+    Matrix res (nrow(), ncol());
+    for (int i=0; i<nrow(); ++i)
+        for (int j=0; j<ncol(); ++j)
+            res[i][j] = (*this)[i][j];
+
+    const int p = nrow()*ncol(); //num. entries.
 
     // if z is less than half the number of entries,
     //  just keep picking random entries until one
@@ -750,35 +778,46 @@ Matrix<double> Matrix<double>::RandomZeroes(int z) {
     int     i = 0   // indices
         ,   k = 0
         ;
+
+
     int** picked_pairs = new int*[z];    // to hold randomly selected pairs
     int** ij_pairs = new int*[p];        // to store all pairs.
-    for (i=0; i<p; ++i) 
+
+    for (i=0; i<p; ++i) {
+        ij_pairs[i] = nullptr;
         ij_pairs[i] = new int[2]; 
+    }
+
+
+
+    
+
     
     for (i=0; i<nrow(); ++i) {             // Generate [i,j] pairs
         for (int j=0; j<ncol(); ++j) {
             ij_pairs[k][0] = i; 
-            ij_pairs[k++][1] = j;
+            ij_pairs[k][1] = j;
+            k++;
         }
     }
 
     // randomly select z pairs from all pairs
-    picked_pairs = RandomSelect<int*>(ij_pairs, p, picked_pairs, z);
+    RandomSelect<int*>(ij_pairs, p, picked_pairs, z);
     
     // zero the entry corresponding to each selected pair
     for (i=0; i<z; ++i) {
         res[picked_pairs[i][0]][picked_pairs[i][1]] = 0;
     }
 
+
     // clean up dynamic memory
+    delete[] picked_pairs;
+
     for (i=0; i<p; ++i) 
-        delete ij_pairs[i];
-    delete[] ij_pairs;;
+        delete[] ij_pairs[i];
 
-    for (i=0; i<z; ++i)
-        delete picked_pairs[i];
-    delete[] picked_pairs[i];;
-
+    delete[] ij_pairs;
+    
     // return the matrix of density nrow*ncol - z
     return res;
 }

@@ -42,9 +42,9 @@ class DiscreteTimeSeries {
 
         void RandomStart() {start.RandomReals();}
         
-        // shrink dimension of vectors in esn series by one 
-        virtual void Shrink() { 
-            d = d>0? d-1: 0; 
+        // shrink dimension of vectors in esn series by dN 
+        virtual void Shrink(int m) { 
+            d = d>m? d-m: 0; 
             start.setnrow(d);
             for ( int i=0; i<steps; ++i ){
                 (*this)[i].setnrow(d);
@@ -97,9 +97,9 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void Predict(void);
         void Tune();
 
-        virtual void Shrink() {
-            // shrink dimension of esn vectors in time series
-            DiscreteTimeSeries::Shrink();
+        virtual void Shrink(int m) {
+            // shrink dimension of esn vectors in time series by m
+            DiscreteTimeSeries::Shrink(m);
 
             // shrink ncol and nrow of W
             W.setnrow(d);
@@ -113,6 +113,9 @@ class EchoStateNetwork : public DiscreteTimeSeries {
 
             // shrink dimension of offset vector
             offset.setnrow(d);
+
+            // shrink dimensions of initial condition
+            start.setnrow(d);
         }
 
         virtual void Restore() {
@@ -131,7 +134,7 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void SetB (double _b) {b=_b;}
         const double& GetB () const {return b;}
 
-        void SetSigma (double _sigma);
+        void SetSigma (double _sigma) {sigma=_sigma;};
         const double& GetSigma () const {return sigma;}
 
         void SetDens (double _dens) {dens=_dens;}

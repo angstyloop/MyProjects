@@ -333,10 +333,10 @@ void EchoStateNetwork::Predict (void) {
 
 void EchoStateNetwork::Tune() {
     const int& 
-            N_max   = 1002
-        ,   dN  = 100
+            N_max   = 102
+        ,   dN  = 2
         ,   short_run = 10
-        ,   long_run  = 100
+        ,   long_run  = 500
         ,   wsteps  =   1000
         ,   tsteps  =   1000
         ;
@@ -367,24 +367,23 @@ void EchoStateNetwork::Tune() {
     //  the error = abs. val. of the difference between the
     //  first short_run predicted/actual terms + difference in abs.
     //  val of long_run predicted/actual terms
-
     Vector esn_start (N_max);
     esn_start.RandomReals();
     
     EchoStateNetwork esn (esn_start, in_series, steps);
     esn.RandomW();
 
-    for (; N>1; N-=dN) {
+    for (N=N_max; N>1; N-=dN) {
 
-        for (; p>0; p-=dp) {
+        for (p=p_max; p>0; p-=dp) {
 
             esn.SetDens(p);
 
-            for (; s>0; s-=ds) {
+            for (s=s_max; s>0; s-=ds) {
 
                 esn.SetSigma(s);
 
-                for (; B>0; B-=dB) {
+                for (B=B_max; B>0; B-=dB) {
 
                     esn.SetB(b);
 
@@ -402,8 +401,8 @@ void EchoStateNetwork::Tune() {
                     //  points in in_series and o_series
                     for (int i=0; i<short_run; ++i) {
                         for (int j=0; j<In_Series_Dim(); ++j) {
-                            error += ( (*in_series)[i][j] - (*o_series)[i][j] ) 
-                                  * ( (*in_series)[i][j] - (*o_series)[i][j] );
+                            error += ( (*in_series)[i][j] - (*o_series[i])[j] ) 
+                                  * ( (*in_series)[i][j] - (*o_series[i])[j] );
                         }
                     }
 
@@ -421,7 +420,7 @@ void EchoStateNetwork::Tune() {
 
                     // get the max for *o_series
                     for (int i=0; i<short_run; ++i) {
-                        temp = (*o_series)[long_run-1+i].Norm();
+                        temp = (*o_series[long_run-1+i]).Norm();
                         if (temp > o_max)
                             o_max = temp;
                     }                    
@@ -438,47 +437,63 @@ void EchoStateNetwork::Tune() {
                         s_op = s;
                         p_op = p;
                     }
+
+                    // reset initial condition
+                    (*in_series)[0] = start;
+                    
+                    // progress, for debugging
+                    std::cout   << "N: " << N << "   " 
+                                << "p: " << p << "   "
+                                << "s: " << s << "   "
+                                << "B: " << B << "   "
+                                //<< "error: " << error << "   "
+                                << "min_error: " << min_error << "   "
+                                << "error: " << error << "   "
+                                << std::endl;
+
+
                 } // end of loop
             } // end of loop
         } // end of loop
 
         // reduce the internal dimension of all vectors/matrices
-        //  by one.
-        Shrink();
+        //  by dN.
+        Shrink(dN);
+
 
     } // end of N loop
 
     // restore the internal dimension of all vectors/matrices
     //  to it's max value
-        Restore(); 
+    //    Restore(); 
 
     // adopt optimal values
     SetB(B_op);
     SetSigma(s_op);
     SetDens(p_op); 
 
-    // to effectively change N...
+    // to effectively change N, we have to do all this
     d = N_op;
 
-    // need to write a method called compress that reallocates and copies
-    //  to get rid of extra space and set max_d to current d.
     W.setnrow(d);
     W.setncol(d);
-    //W.compress();
+    W.compress();
     
     W_in.setnrow(d);
-    //W_in.compress();
+    W_in.compress();
     
     W_out.setncol(d);
-    //W_out.compress();
+    W_out.compress();
     
     offset.setnrow(d);
-    //offset.compress();
+    offset.compress();
 
     for (int i=0; i<steps; ++i) {
         (*this)[i].setncol(d);
-        //(*this)[i].compress();
+        (*this)[i].compress();
     }
+
+    //all done. this esn is optimized for prediction
 }
 
 void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N, double db=.1) {
@@ -593,3 +608,4 @@ void EchoStateNetwork::Save_OG (double** o_series) {
         }
     }
 }
+

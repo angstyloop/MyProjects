@@ -1,42 +1,16 @@
-#include <boost/multiprecision/cpp_dec_float.hpp> 
-#include <boost/math/constants/constants.hpp>
-#include <iostream>
-#include <vector>
+#include "/usr/local/dislin/Lorenz.h"
 
-//typedef double xdouble;
-typedef boost::multiprecision::cpp_dec_float_50 xdouble;
-
-using namespace std; 
-
-vector<xdouble> Baker (vector<xdouble>& v)
-{
-    xdouble a (1./3);
-    vector<xdouble> temp (2);
-    
-    if (v[0] < .5) {
-        temp[0] = 2*v[0];
-        temp[1] = a*v[1];
-    } else {
-        temp[0] = 2*v[0]-1;
-        temp[1] = a*v[1]+.5;
-    }
-    return temp;
-}
-  
-int main() 
-{ 
-    xdouble pi = boost::math::constants::pi<xdouble>();
-    xdouble a(3), b(3);
-    a = a+b;
-    vector<vector<xdouble>> baker_series (100, vector<xdouble>(2));
-    vector<xdouble> baker_start (2);
-    baker_start[0] = pi/6;
-    baker_start[1] = .3;
-    baker_series[0] = baker_start;
-    cout << baker_series[0][0] << "    " << baker_series[0][1] << endl;;
-    for (int i=1; i<100; ++i) {   
-        baker_series[i] = Baker(baker_series[i-1]);
-        cout << baker_series[i][0] << "    " << baker_series[i][1] << endl;
-    }
+int main () {
+    int N_max = 102;
+    int steps = 2000;
+    Vector esn_start(N_max);
+    esn_start.RandomReals();
+    Vector a (3);
+    a[0] = a[1] = a[2] = 1;
+    DiscreteTimeSeries* data = new LorenzApprox(a, steps);
+    EchoStateNetwork esn(esn_start, data, steps);
+    esn.Tune();
     return 0;
-}
+}    
+
+
