@@ -28,6 +28,7 @@ class DiscreteTimeSeries {
         virtual Vector O_Series (int i) { return (*this)[0]; }
 
         virtual void Wash (int);
+        void SetDim(int _d) {d=_d;}
         const int& Dim() const {return d;}
         Vector& Curr() {return (*this)[curr];}
         Vector& Prev() {return (*this)[prev];} // eq. to (*this)[PrevIndex()]
@@ -36,13 +37,18 @@ class DiscreteTimeSeries {
         void SetCurr(int i) {curr = i;}
         void SetPrev(int i) {prev = i;}
         void SetPrevComp(int i, double val) {(*this)[prev][i] = val;}
+            
+        // set first vector in series to start
+        virtual void Reset() {
+            (*this)[0] = start;
+        }
 
         void SetStart (Vector _start) {start=_start;}
-        const Vector& GetStart () const {return start;}
+        Vector& GetStart () {return start;}
 
         void RandomStart() {start.RandomReals();}
         
-        // shrink dimension of vectors in esn series by dN 
+        // shrink dimension of vectors in series by dN 
         virtual void Shrink(int m) { 
             d = d>m? d-m: 0; 
             start.setnrow(d);
@@ -76,7 +82,7 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         double  sigma    = 1        //     
             ,   b        = .00001
             ,   dens     = .5
-            ,   spec_rad = 0.9;
+            ,   spec_rad = 1;
     public:
         EchoStateNetwork (Vector, DiscreteTimeSeries*, const int&);
         void Map(void);
@@ -96,6 +102,11 @@ class EchoStateNetwork : public DiscreteTimeSeries {
 
         void Predict(void);
         void Tune();
+
+        virtual void Reset() {
+            in_series->Reset();
+            DiscreteTimeSeries::Reset();
+        }
 
         virtual void Shrink(int m) {
             // shrink dimension of esn vectors in time series by m

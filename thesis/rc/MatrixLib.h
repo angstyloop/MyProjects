@@ -7,7 +7,7 @@
 #include <random>
 #include <cmath>
 
-#define OFF .01
+#define OFF 0
 #define EPS .000000001
 #define HT_LIM
 
@@ -179,6 +179,12 @@ class Matrix {
         virtual Matrix operator* (const Matrix& rhs) {
             if (ncol() != rhs.nrow()) {
                 std::cout << "Invalid matrix multiplication: matrices don't fit." << std::endl;
+                std::cout << "nrow: " << nrow() << "  ncol: " << ncol() << std::endl;
+                this->Print();
+                std::cout<<std::endl;
+                std::cout << "nrow: " << rhs.nrow() << "  ncol: " << rhs.ncol() << std::endl;
+                rhs.Print();
+                std::cout<<std::endl;
                 exit(EXIT_FAILURE);
             }
             Matrix P (nrow(), rhs.ncol()); //result
@@ -198,6 +204,12 @@ class Matrix {
         Matrix operator+ (const Matrix& rhs) const {
             if (ncol() != rhs.ncol() || nrow() != rhs.nrow()) {
                 std::cout << "Invalid matrix addition - wrong sizes" << std::endl;
+                std::cout << "nrow: " << nrow() << "  ncol: " << ncol() << std::endl;
+                this->Print();
+                std::cout<<std::endl;
+                std::cout << "nrow: " << rhs.nrow() << "  ncol: " << rhs.ncol() << std::endl;
+                rhs.Print();
+                std::cout<<std::endl;
                 exit(EXIT_FAILURE);
             }
             Matrix P (nrow(), ncol());
@@ -222,7 +234,7 @@ class Matrix {
         }
 
         // neatly print sub matrix on command line, with optional precision and spacing args
-        virtual void Print (int precision = 10, int spacing = 2) {
+        virtual void Print (int precision = 10, int spacing = 2) const {
             for (int i=0; i<nrow(); ++i) {
                 for (int j=0; j<ncol(); ++j)
                     printf("%.*f%*c", precision,double(M[i][j]), spacing, ' ');
@@ -365,7 +377,7 @@ class AugMatrix : public Matrix<double> {
                 exit(EXIT_SUCCESS);
             }
         }
-        virtual void Print (int precision = 1, int spacing = 2) {
+        virtual void Print (int precision = 1, int spacing = 2) const {
             for (int i=0; i<nrow(); ++i) {
                 for (int j=0; j<acol; ++j)
                     printf("%.*f%*c", precision, double(M[i][j]), spacing, ' ');
@@ -441,6 +453,8 @@ class Vector : public Matrix<double> {
                     delete[] M[i];
                 delete M;
                 M = that.M;
+                setnrow(that.nrow());
+                setncol(that.ncol());
                 that.M = nullptr;
             } 
             return *this;
@@ -454,6 +468,8 @@ class Vector : public Matrix<double> {
         // move ctor
         Vector (Vector&& that) : Matrix<double>(that.nrow(), that.ncol()) {
             M = that.M;
+            setnrow(that.nrow());
+            setncol(that.ncol());
             that.M = nullptr;
         }
 
@@ -462,6 +478,8 @@ class Vector : public Matrix<double> {
         Vector& operator= (Vector& that) {
             for (int i=0; i<length(); ++i)
                 M[i][0] = that.M[i][0];
+            setnrow(that.nrow());
+            setncol(that.ncol());
             return *this;
         }
         
@@ -778,8 +796,6 @@ Matrix<double> Matrix<double>::RandomZeroes(int z) {
     int     i = 0   // indices
         ,   k = 0
         ;
-
-
     int** picked_pairs = new int*[z];    // to hold randomly selected pairs
     int** ij_pairs = new int*[p];        // to store all pairs.
 
@@ -787,12 +803,6 @@ Matrix<double> Matrix<double>::RandomZeroes(int z) {
         ij_pairs[i] = nullptr;
         ij_pairs[i] = new int[2]; 
     }
-
-
-
-    
-
-    
     for (i=0; i<nrow(); ++i) {             // Generate [i,j] pairs
         for (int j=0; j<ncol(); ++j) {
             ij_pairs[k][0] = i; 
@@ -808,7 +818,6 @@ Matrix<double> Matrix<double>::RandomZeroes(int z) {
     for (i=0; i<z; ++i) {
         res[picked_pairs[i][0]][picked_pairs[i][1]] = 0;
     }
-
 
     // clean up dynamic memory
     delete[] picked_pairs;

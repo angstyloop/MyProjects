@@ -1,4 +1,5 @@
 #include "rc.h"
+#include "TrimmableLinkedList.h"
 #include <iostream>
 
 //#define OFF .5 
@@ -27,12 +28,18 @@ DiscreteTimeSeries::DiscreteTimeSeries (Vector _start, int s )
 
 // populate series
 void DiscreteTimeSeries::Listen () {
+    prev = 0;
+    curr = 1;
     while (curr<steps) Map();// see pure virtual function in DiscreteTimeSeries for spec.
 }
 
 // populate series
 void EchoStateNetwork::Listen () {
-    DiscreteTimeSeries::Listen();
+    in_series->SetPrev(0);
+    in_series->SetCurr(1);
+    prev = 0;
+    curr = 1;
+    while (curr<steps) Map();
 }
 void DiscreteTimeSeries::PrintSeries() {
     for (int i=0; i<steps; ++i) {
@@ -247,6 +254,8 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
       , W_out (_in_series->Dim(), d)
       , offset (Offset(d)) {
 
+        in_series->SetDim(_in_series->Dim());
+
         // initialize "current" and "previous" indices of in_series, just in case they're outta
         //  wack. if the indices aren't right then listen() will be wrong
         in_series->SetCurr(1);
@@ -295,7 +304,11 @@ void EchoStateNetwork::Predict (void) {
         // If we want to define an output function later,
         //  this is where it would be used.
         //W_out.Print();
+        //(*this)[prev].Print();
+        //std::cout << "ok" << std::endl;
         temp = W_out * (*this)[prev]; 
+
+        //std::cout<<temp.len()<<std::endl;
 
         // save the original input for later so we can compare
         *(o_series[in_series->PrevIndex()]) = in_series->Prev();
@@ -333,8 +346,8 @@ void EchoStateNetwork::Predict (void) {
 
 void EchoStateNetwork::Tune() {
     const int& 
-            N_max   = 102
-        ,   dN  = 2
+            N_max   = 100
+        ,   dN  = 10
         ,   short_run = 10
         ,   long_run  = 500
         ,   wsteps  =   1000
@@ -347,11 +360,11 @@ void EchoStateNetwork::Tune() {
 
     const double&
             B_max   = 1
-        ,   dB      = .1
+        ,   dB      = .3
         ,   s_max   = 1
-        ,   ds      = .1
+        ,   ds      = .3
         ,   p_max   = 1
-        ,   dp      = .1
+        ,   dp      = .3
         ;
 
     double  min_error = DBL_MAX
@@ -363,21 +376,94 @@ void EchoStateNetwork::Tune() {
         ,   p_op = p_max
         ;
 
+    EchoStateNetwork esn (this->start, this->in_series, this->steps);
+    RandomW();
+    esn.W = W;
+    RandomW_in();
+    esn.W_in = W_in;
+    
+
+    // generate a shuffled array of matrix indices to draw from
+    //  at the end of each p iteration
+    //
+ 
+   int i, j, k; // k = counter for array of pairs of indices
+   i=j=k=0;
+
+    int** picked_pairs = new int*[esn.W.nrow()*esn.W.ncol()];    // to hold randomly selected pairs
+    int** picked_pairs_copy = new int*[esn.W.nrow()*esn.W.ncol()];    
+    int** ij_pairs = new int*[esn.W.nrow()*esn.W.ncol()];        // to store all pairs.
+        
+
+    for (i=0; i<esn.W.nrow()*esn.W.ncol(); ++i) {
+        ij_pairs[i] = new int[2];
+        picked_pairs_copy[i] = new int[2];
+        //picked_pairs[i] = new int[2];
+    }
+
+    for (i=0; i<esn.W.nrow(); ++i) {             // Generate [i,j] pairs
+        for (j=0; j<esn.W.ncol(); ++j) {
+            ij_pairs[k][0] = i;
+            ij_pairs[k][1] = j;
+            k++;
+        }
+    }
+ 
+    // randomly select z pairs from all pairs
+    RandomSelect<int*>(ij_pairs, p, picked_pairs, N*N);
+
+    for (int i=0; i<N*N; ++i) {
+        picked_pairs_copy[i][0] = picked_pairs[i][0];
+        picked_pairs_copy[i][1] = picked_pairs[i][1];
+    }
+
+    // now use picked_pairs, a shuffled array of int[2],
+    //  to make a trimmable linked list, where the key 
+    //  for each node is max(i,j), and the data is the
+    //  [i,j] pair. it might be possible to skip the
+    //  intermediate array picked_pairs, but we'd have
+    //  to change RandomSelect so let's just leave it
+    //  for now.
+
+    TrimmableLinkedList tll (N), tll_copy(N);
+
+    Node** node_ptrs = new Node*[N*N];
+    Node** node_ptrs_copy = new Node*[N*N];
+
+    for (int i=0; i<N*N; ++i) {
+
+        node_ptrs[i] = new Node(picked_pairs[i]);
+        tll.Insert(node_ptrs[i]);
+
+        node_ptrs_copy[i] = new Node(picked_pairs_copy[i]);
+        tll_copy.Insert(node_ptrs_copy[i]);
+        //std::cout<< tll.head->data[0] << std::endl;
+    }
+    
+    // Remove sentinel from tll so it's just a closed loop
+    tll.Ring();
+    tll_copy.Ring();
+
     // generate many echo state networks in order to minimize
     //  the error = abs. val. of the difference between the
     //  first short_run predicted/actual terms + difference in abs.
     //  val of long_run predicted/actual terms
-    Vector esn_start (N_max);
-    esn_start.RandomReals();
-    
-    EchoStateNetwork esn (esn_start, in_series, steps);
-    esn.RandomW();
-
+    int z1, z0;
+    int* ij_pair;
     for (N=N_max; N>1; N-=dN) {
+
+        z1=z0=0;
 
         for (p=p_max; p>0; p-=dp) {
 
             esn.SetDens(p);
+
+            // zero entries until the new density p is reached
+            for (z1=int((1.-p)*N*N); z0<z1; ++z0) {
+                ij_pair = tll.Read();
+                esn.W[ij_pair[0]][ij_pair[1]] = 0;
+                tll.Next();
+            }
 
             for (s=s_max; s>0; s-=ds) {
 
@@ -390,19 +476,24 @@ void EchoStateNetwork::Tune() {
                     // Do basically what lorenz_echo.cpp does,
                     //  but compute error instead of printing.
                     
-                    Listen();
-                    Wash(wsteps);
-                    Train(tsteps);
-                    Predict();
+                    //std::cout<<(*esn.in_series)[0].nrow()<<std::endl;
+                    esn.Listen();
+                    //std::cout<<"after listen: "<<(*esn.in_series)[0].nrow()<<std::endl;
+                    esn.Wash(wsteps);
+                    //std::cout<<"after wash: "<<(*esn.in_series)[0].nrow()<<std::endl;
+                    esn.Train(tsteps);
+                    //std::cout<<"after train: "<<(*esn.in_series)[0].nrow()<<std::endl;
+                    esn.Predict();
+                    //std::cout<<"after predict: "<<(*esn.in_series)[0].nrow()<<std::endl;
 
                     double error = 0;
 
                     // sum the square differences of the first short_run
                     //  points in in_series and o_series
                     for (int i=0; i<short_run; ++i) {
-                        for (int j=0; j<In_Series_Dim(); ++j) {
-                            error += ( (*in_series)[i][j] - (*o_series[i])[j] ) 
-                                  * ( (*in_series)[i][j] - (*o_series[i])[j] );
+                        for (int j=0; j<esn.In_Series_Dim(); ++j) {
+                            error += ( (*esn.in_series)[i][j] - (*esn.o_series[i])[j] ) 
+                                  * ( (*esn.in_series)[i][j] - (*esn.o_series[i])[j] );
                         }
                     }
 
@@ -410,17 +501,17 @@ void EchoStateNetwork::Tune() {
                     double o_max = 0;
                     double temp = 0;
 
-                    // get the highest abs value term from the short_run number
+                    // get the highest square magnitude term from the short_run number
                     //  of terms starting at the long_runth term of *in_series
                     for (int i=0; i<short_run; ++i) {
-                        temp = (*in_series)[long_run-1+i].Norm();
+                        temp = (*esn.in_series)[long_run-1+i]*(*esn.in_series)[long_run-1+i];;
                         if (temp > in_max)
                             in_max = temp;
                     }
 
                     // get the max for *o_series
                     for (int i=0; i<short_run; ++i) {
-                        temp = (*o_series[long_run-1+i]).Norm();
+                        temp = (*esn.o_series[long_run-1+i])*(*esn.o_series[long_run-1+i]);
                         if (temp > o_max)
                             o_max = temp;
                     }                    
@@ -438,60 +529,100 @@ void EchoStateNetwork::Tune() {
                         p_op = p;
                     }
 
-                    // reset initial condition
-                    (*in_series)[0] = start;
-                    
+                    // reset initial conditions
+                    // fix this -> should work now
+                    esn.Reset(); 
+
                     // progress, for debugging
                     std::cout   << "N: " << N << "   " 
                                 << "p: " << p << "   "
                                 << "s: " << s << "   "
                                 << "B: " << B << "   "
-                                //<< "error: " << error << "   "
                                 << "min_error: " << min_error << "   "
                                 << "error: " << error << "   "
                                 << std::endl;
 
 
                 } // end of loop
+
             } // end of loop
-        } // end of loop
+            
+            // zero one more entry in W for the next iteration of the p loop
+            
+        } // end of p loop
+        
+        // revising. we don't want to do this if N=2
+        if (true/*N>2*/) {
+            // esn.W is all zeroes now, restore to this->W
+            esn.W = W;
 
-        // reduce the internal dimension of all vectors/matrices
-        //  by dN.
-        Shrink(dN);
+            // reduce the internal dimension of all vectors/matrices
+            //  by dN.
+            esn.Shrink(dN);
 
+            // Shrink this->W too so we can restore esn.W again next
+            //  time after it's all zeroed out.
+            W.setnrow(N-dN);
+            W.setncol(N-dN);
+        
+            // trim linked list of ij pairs down to include only
+            //  i,j <= N-dN
+            tll.Trim(N-dN);
+        }
 
     } // end of N loop
 
-    // restore the internal dimension of all vectors/matrices
-    //  to it's max value
-    //    Restore(); 
-
     // adopt optimal values
-    SetB(B_op);
-    SetSigma(s_op);
-    SetDens(p_op); 
+    this->SetB(B_op);
+    this->SetSigma(s_op);
+    this->SetDens(p_op); 
 
     // to effectively change N, we have to do all this
-    d = N_op;
+    this->d = N_op;
+    
 
-    W.setnrow(d);
-    W.setncol(d);
-    W.compress();
+    this->W.setnrow(d);
+    this->W.setncol(d);
+    this->W.compress();
     
-    W_in.setnrow(d);
-    W_in.compress();
+    this->W_in.setnrow(d);
+    this->W_in.compress();
     
-    W_out.setncol(d);
-    W_out.compress();
+    this->W_out.setncol(d);
+    this->W_out.compress();
+    esn.W_out.compress();
+    this->W_out = esn.W_out;
     
-    offset.setnrow(d);
-    offset.compress();
+    this->offset.setnrow(d);
+    this->offset.compress();
 
+    // reset the first vector to start
+    this->Reset();
+
+    // set the size of every vector in series
     for (int i=0; i<steps; ++i) {
-        (*this)[i].setncol(d);
+        (*this)[i].setnrow(d);
         (*this)[i].compress();
     }
+
+    // put the right number of zeroes in the right spots of this->W
+    tll_copy.Trim(d);
+    tll_copy.Ring();
+    
+    for (z0=0, z1=int((1.-p)*W.nrow()*W.ncol()); z0<z1; ++z0) {
+        ij_pair = tll_copy.Read();
+        W[ij_pair[0]][ij_pair[1]] = 0;
+        tll_copy.Next();
+    }
+
+    
+    //clean up dynamic memory
+    for (int i=0; i<esn.W.nrow()*esn.W.ncol(); ++i)
+        delete[] ij_pairs[i];
+    delete[] ij_pairs;
+    delete[] picked_pairs;
+    delete[] node_ptrs;
+    delete[] node_ptrs_copy;
 
     //all done. this esn is optimized for prediction
 }
@@ -526,11 +657,11 @@ void EchoStateNetwork::PrintPred_Series (void) {
 }
 
 void EchoStateNetwork::Map (void) { 
-    // copy W to A and apply density restriction to A.
-    Matrix<double> A = W.RandomZeroes(int((1.-dens)*W.nrow()*W.ncol()));
-
+    
     // in_series lags this->series by 1. series[0] is r_0. in_series[0] is the first input
-    (*this)[curr] =  sigma * W_in * in_series->Prev() + spec_rad * A * (*this)[prev] + offset;  
+    
+    (*this)[curr] =  sigma * W_in * in_series->Prev() + spec_rad * W * (*this)[prev] /*+offset*/;  
+
     in_series->Map();
     prev = curr++;
      
@@ -561,17 +692,16 @@ void EchoStateNetwork::Train(int t) {
     //T.Print();
     W_out = RidgeRegress(T, M, b);
 
-    // put last training point at the front and zero the rest
+    // put last point in series at the front and zero the rest
     
     Vector temp1 = (*in_series)[t-1];
-    //(*in_series)[0] = (*in_series)[t-1];
     
     Vector temp2 = (*this)[t-1];
-    //(*this)[0] = (*this)[t-1];
 
     Wash(steps-1);
 
     (*in_series)[0] = temp1;
+
     (*this)[0] = temp2;
 
 
