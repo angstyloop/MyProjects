@@ -252,6 +252,7 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
       , W (d, d)
       , W_in (d, _in_series->Dim())
       , W_out (_in_series->Dim(), d)
+      , W_fb (d, _in_series->Dim())
       , offset (Offset(d)) {
 
         in_series->SetDim(_in_series->Dim());
@@ -268,6 +269,10 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
         
         // fill W_in with sigma (=1)
         W_in.Fill(sigma);
+
+        // fill W_fb with sigma (=1)
+        W_fb.Fill(sigfb);
+
       }
       
 
@@ -276,6 +281,11 @@ EchoStateNetwork::EchoStateNetwork (Vector start, DiscreteTimeSeries* _in_series
 // generate random W_in where each entry is 1 or -1
 void EchoStateNetwork::RandomW_in() {
     W_in.RandomSigns();
+}
+
+// generate random W_fb where each entry is 1 or -1
+void EchoStateNetwork::RandomW_fb() {
+    W_fb.RandomSigns();
 }
 
 // Generate a random W with entries from the interval [-1,1].
@@ -295,45 +305,58 @@ void EchoStateNetwork::RandomW() {
     W = (1./eig) * W;
 }
 
+// this is different now. may break everything.
 // should work like Observe(); picks up where Wash() left off.
 void EchoStateNetwork::Predict (void) {
+
     int begin = prev;
-    Vector temp(in_series->Dim());
+
     while (curr<steps) {
-        //Swap in approximate input for real one.
+
+        //Swap in approximate previous input for real one.
         // If we want to define an output function later,
         //  this is where it would be used.
-        //W_out.Print();
-        //(*this)[prev].Print();
-        //std::cout << "ok" << std::endl;
-        temp = W_out * (*this)[prev]; 
-
-        //std::cout<<temp.len()<<std::endl;
+        
+        //temp = W_out * (*this)[prev]; 
 
         // save the original input for later so we can compare
+        
         *(o_series[in_series->PrevIndex()]) = in_series->Prev();
 
-        // swap out each component of the input vector for the predicted input vector.
-        //  I use a for loop here just so it looks exactly like Observe()
-        for (int i=0; i<temp.len(); ++i) {
-            in_series->SetPrevComp(i, temp[i]);
-        }
-
-        //in_series->Prev().Print();
-
-        //(*in_series)[in_series->PrevIndex()] = temp;
-        //(*in_series)[in_series->PrevIndex()].Print();
+        // Swap out each component of the previous input vector 
+        //  for the approximate previous input vector. I use a 
+        //  for loop here just so it looks exactly like Observe().
+        
+        //for (int i=0; i<temp.len(); ++i) {
+        //    in_series->SetPrevComp(i, temp[i]);
+        //}
 
         //Call map to iterate hidden indices
-        Map();
+        
+        PredictMap();
     } 
 
-    //one more time to get the last predicted output 
-    temp = W_out*(*this)[prev];
+    //one more time to get the last predicted previous output 
+
+    //temp = W_out*(*this)[prev];
 
     // save the original input for later so we can compare
+
     *(o_series[in_series->PrevIndex()]) = in_series->Prev();
-    (*in_series)[in_series->PrevIndex()] = temp;
+    //(*in_series)[in_series->PrevIndex()] = temp;
+    //PredictMap();
+
+    prev = begin;
+    in_series->SetPrev(prev);
+    curr = prev+1;
+    in_series->SetCurr(curr);
+
+    while (curr<steps){
+        (*in_series)[in_series->PrevIndex()] = W_out * (*this)[prev];
+        prev = curr++;
+        in_series->SetPrev(prev);
+        in_series->SetCurr(curr);
+    }
     
     //set hidden indices up for subsequent printing/graphing.
     //begin should be the index of the first predicted vector;
@@ -347,10 +370,10 @@ void EchoStateNetwork::Predict (void) {
 void EchoStateNetwork::Tune() {
     const int& 
             N_max   = 100
-        ,   dN  = 10
+        ,   dN  = 100
         ,   short_run = 10
-        ,   long_run  = 500
-        ,   wsteps  =   1000
+        ,   long_run  = 1000
+        ,   wsteps  =   100
         ,   tsteps  =   1000
         ;
 
@@ -359,12 +382,14 @@ void EchoStateNetwork::Tune() {
         ;
 
     const double&
-            B_max   = 1
-        ,   dB      = .3
-        ,   s_max   = 1
-        ,   ds      = .3
-        ,   p_max   = 1
-        ,   dp      = .3
+            B_max   = .01
+        ,   dB      = .01
+        ,   s_max   = .5
+        ,   ds      = .5
+        ,   sfb_max = .5
+        ,   dsfb    = .5
+        ,   p_max   = .4
+        ,   dp      = .4
         ;
 
     double  min_error = DBL_MAX
@@ -372,6 +397,8 @@ void EchoStateNetwork::Tune() {
         ,   B_op = B_max
         ,   s    = s_max
         ,   s_op = s_max
+        ,   sfb  = sfb_max
+        ,   sfb_op = sfb_max
         ,   p    = p_max
         ,   p_op = p_max
         ;
@@ -380,7 +407,9 @@ void EchoStateNetwork::Tune() {
     RandomW();
     esn.W = W;
     RandomW_in();
+    RandomW_fb();
     esn.W_in = W_in;
+    esn.W_fb = W_fb;
     
 
     // generate a shuffled array of matrix indices to draw from
@@ -437,12 +466,12 @@ void EchoStateNetwork::Tune() {
 
         node_ptrs_copy[i] = new Node(picked_pairs_copy[i]);
         tll_copy.Insert(node_ptrs_copy[i]);
-        //std::cout<< tll.head->data[0] << std::endl;
     }
     
     // Remove sentinel from tll so it's just a closed loop
     tll.Ring();
     tll_copy.Ring();
+
 
     // generate many echo state networks in order to minimize
     //  the error = abs. val. of the difference between the
@@ -465,89 +494,101 @@ void EchoStateNetwork::Tune() {
                 tll.Next();
             }
 
-            for (s=s_max; s>0; s-=ds) {
+            for (sfb=sfb_max; sfb>0; sfb-=dsfb) {
 
-                esn.SetSigma(s);
+                esn.SetSigfb(sfb);
 
-                for (B=B_max; B>0; B-=dB) {
+                for (s=s_max; s>0; s-=ds) {
 
-                    esn.SetB(b);
+                    esn.SetSigma(s);
 
-                    // Do basically what lorenz_echo.cpp does,
-                    //  but compute error instead of printing.
+                    for (B=B_max; B>0; B-=dB) {
+
+                        esn.SetB(b);
+
+                        // Do basically what lorenz_echo.cpp does,
+                        //  but compute error instead of printing.
                     
-                    //std::cout<<(*esn.in_series)[0].nrow()<<std::endl;
-                    esn.Listen();
-                    //std::cout<<"after listen: "<<(*esn.in_series)[0].nrow()<<std::endl;
-                    esn.Wash(wsteps);
-                    //std::cout<<"after wash: "<<(*esn.in_series)[0].nrow()<<std::endl;
-                    esn.Train(tsteps);
-                    //std::cout<<"after train: "<<(*esn.in_series)[0].nrow()<<std::endl;
-                    esn.Predict();
-                    //std::cout<<"after predict: "<<(*esn.in_series)[0].nrow()<<std::endl;
+                        //std::cout<<"In Tune: start Listen"<<std::endl;
+                        esn.Listen();
+                        //std::cout<<"In Tune: end Listen"<<std::endl;
 
-                    double error = 0;
+                        //std::cout<<"In Tune: start Wash"<<std::endl;
+                        esn.Wash(wsteps);
+                        //std::cout<<"In Tune: end Wash"<<std::endl;
 
-                    // sum the square differences of the first short_run
-                    //  points in in_series and o_series
-                    for (int i=0; i<short_run; ++i) {
-                        for (int j=0; j<esn.In_Series_Dim(); ++j) {
-                            error += ( (*esn.in_series)[i][j] - (*esn.o_series[i])[j] ) 
-                                  * ( (*esn.in_series)[i][j] - (*esn.o_series[i])[j] );
+                        //std::cout<<"In Tune: start Train"<<std::endl;
+                        esn.Train(tsteps);
+                        //std::cout<<"In Tune: end Train"<<std::endl;
+
+                        //std::cout<<"In Tune: start Predict"<<std::endl;
+                        esn.Predict();
+                        //std::cout<<"In Tune: end Predict"<<std::endl;
+
+                        double error = 0;
+
+                        // sum the square differences of the first short_run
+                        //  points in in_series and o_series
+                        for (int i=0; i<short_run; ++i) {
+                            for (int j=0; j<esn.In_Series_Dim(); ++j) {
+                                error += ( (*esn.in_series)[i][j] - (*esn.o_series[i])[j] ) 
+                                    * ( (*esn.in_series)[i][j] - (*esn.o_series[i])[j] );
+                            }
                         }
-                    }
 
-                    double in_max = 0;
-                    double o_max = 0;
-                    double temp = 0;
+                        double in_max = 0;
+                        double o_max = 0;
+                        double temp = 0;
 
-                    // get the highest square magnitude term from the short_run number
-                    //  of terms starting at the long_runth term of *in_series
-                    for (int i=0; i<short_run; ++i) {
-                        temp = (*esn.in_series)[long_run-1+i]*(*esn.in_series)[long_run-1+i];;
-                        if (temp > in_max)
-                            in_max = temp;
-                    }
+                        // get the highest square magnitude term from the short_run number
+                        //  of terms starting at the long_runth term of *in_series
+                        for (int i=0; i<short_run; ++i) {
+                            temp = (*esn.in_series)[long_run-1+i]*(*esn.in_series)[long_run-1+i];;
+                            if (temp > in_max)
+                                in_max = temp;
+                        }
 
-                    // get the max for *o_series
-                    for (int i=0; i<short_run; ++i) {
-                        temp = (*esn.o_series[long_run-1+i])*(*esn.o_series[long_run-1+i]);
-                        if (temp > o_max)
-                            o_max = temp;
-                    }                    
+                        // get the max for *o_series
+                        for (int i=0; i<short_run; ++i) {
+                            temp = (*esn.o_series[long_run-1+i])*(*esn.o_series[long_run-1+i]);
+                            if (temp > o_max)
+                                o_max = temp;
+                        }                    
                     
-                    // add the square difference in the maxes to error
-                    error += (o_max - in_max) * (o_max - in_max);
+                        // add the square difference in the maxes to error
+                        error += (o_max - in_max) * (o_max - in_max);
 
-                    // If error is smaller than min_error, save new optimal
-                    //  values.
-                    if (error < min_error) {
-                        min_error = error;
-                        N_op = N;
-                        B_op = B;
-                        s_op = s;
-                        p_op = p;
-                    }
+                        // If error is smaller than min_error, save new optimal
+                        //  values.
+                        if (error < min_error) {
+                            min_error = error;
+                            N_op = N;
+                            B_op = B;
+                            s_op = s;
+                            sfb_op = sfb;
+                            p_op = p;
+                        }
 
-                    // reset initial conditions
-                    // fix this -> should work now
-                    esn.Reset(); 
+                        // reset initial conditions
+                        // fix this -> should work now
+                        esn.Reset(); 
 
-                    // progress, for debugging
-                    std::cout   << "N: " << N << "   " 
-                                << "p: " << p << "   "
-                                << "s: " << s << "   "
-                                << "B: " << B << "   "
-                                << "min_error: " << min_error << "   "
-                                << "error: " << error << "   "
-                                << std::endl;
+                        // progress, for debugging
+                        std::cout   << "N: " << N << "   " 
+                                    << "p: " << p << "   "
+                                    << "s: " << s << "   "
+                                    << "sfb: " << sfb << "   "
+                                    << "B: " << B << "   "
+                                    << "min_error: " << min_error << "   "
+                                    << "error: " << error << "   "
+                                    << std::endl;
 
 
-                } // end of loop
+                    } // end of b loop
 
-            } // end of loop
-            
-            // zero one more entry in W for the next iteration of the p loop
+                } // end of s loop
+                
+            } // end of sfb loop
             
         } // end of p loop
         
@@ -575,6 +616,7 @@ void EchoStateNetwork::Tune() {
     // adopt optimal values
     this->SetB(B_op);
     this->SetSigma(s_op);
+    this->SetSigfb(sfb_op);
     this->SetDens(p_op); 
 
     // to effectively change N, we have to do all this
@@ -587,6 +629,9 @@ void EchoStateNetwork::Tune() {
     
     this->W_in.setnrow(d);
     this->W_in.compress();
+
+    this->W_fb.setnrow(d);
+    this->W_fb.compress();
     
     this->W_out.setncol(d);
     this->W_out.compress();
@@ -625,7 +670,8 @@ void EchoStateNetwork::Tune() {
     delete[] node_ptrs_copy;
 
     //all done. this esn is optimized for prediction
-}
+    
+} // end of Tune()
 
 void EchoStateNetwork::RidgeTrace(Matrix<double>** trace, int N, double db=.1) {
     b=0;
@@ -656,16 +702,27 @@ void EchoStateNetwork::PrintPred_Series (void) {
         (*in_series)[i].T().Print();
 }
 
+// this is different now that feedback is included and may break everything
 void EchoStateNetwork::Map (void) { 
     
-    // in_series lags this->series by 1. series[0] is r_0. in_series[0] is the first input
-    
-    (*this)[curr] =  sigma * W_in * in_series->Prev() + spec_rad * W * (*this)[prev] /*+offset*/;  
+
+    //teacher forcing y(t) = u(t+1)
+    (*this)[curr] =  sigma * W_in * in_series->Prev() + spec_rad * W * (*this)[prev] 
+                    + sigfb * W_fb * in_series->Prev() + offset;  
 
     in_series->Map();
     prev = curr++;
-     
 }
+
+void EchoStateNetwork::PredictMap() {
+
+    // no input  u(t) = 0, y(t) = W_out * x(t)
+    (*this)[curr] = spec_rad * W * (*this)[prev] 
+                    + sigfb * W_fb * W_out * (*this)[prev] + offset;  
+    in_series->Map();
+    prev = curr++;
+}
+
 
 // call Wash() before Train
 void EchoStateNetwork::Train(int t) {

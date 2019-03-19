@@ -35,6 +35,7 @@ class DiscreteTimeSeries {
         int CurrIndex () {return curr;}
         int PrevIndex () {return prev;}
         void SetCurr(int i) {curr = i;}
+        void SetCurrComp(int i, double val) {(*this)[curr][i] = val;}
         void SetPrev(int i) {prev = i;}
         void SetPrevComp(int i, double val) {(*this)[prev][i] = val;}
             
@@ -77,15 +78,17 @@ class EchoStateNetwork : public DiscreteTimeSeries {
     protected:
         DiscreteTimeSeries* in_series; 
         Vector** o_series;
-        Matrix<double> W, W_in, W_out;
+        Matrix<double> W, W_in, W_out, W_fb;
         Vector offset;
-        double  sigma    = 1        //     
+        double  sigma    = 1        // weight on input matrix    
+            ,   sigfb    = 1        // weight on feedback matrix
             ,   b        = .00001
             ,   dens     = .5
             ,   spec_rad = 1;
     public:
         EchoStateNetwork (Vector, DiscreteTimeSeries*, const int&);
         void Map(void);
+        void PredictMap(void);
 
         void Save_Pred(double**);
         void Save_OG(double**);
@@ -93,6 +96,7 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void Train(int);
         void Observe(int[], int);
         void PrintW_out(void) {W_out.Print();}
+        void PrintW_fb(void) {W_fb.Print();}
         void PrintTr_Series(void);
         void PrintPred_Series(void);
         Vector In_Series(int i) {return (*in_series)[i];}
@@ -119,6 +123,9 @@ class EchoStateNetwork : public DiscreteTimeSeries {
             // shrink nrow of W_in
             W_in.setnrow(d);
 
+            // shrink ncol of W_fb
+            W_fb.setnrow(d); 
+
             // shrink ncol of W_out
             W_out.setncol(d); 
 
@@ -134,6 +141,7 @@ class EchoStateNetwork : public DiscreteTimeSeries {
             W.setnrow(d);
             W.setncol(d);
             W_out.setncol(d);
+            W_fb.setncol(d);
             offset.setnrow(d);;
         }
         
@@ -148,8 +156,14 @@ class EchoStateNetwork : public DiscreteTimeSeries {
         void SetSigma (double _sigma) {sigma=_sigma;};
         const double& GetSigma () const {return sigma;}
 
+        void SetSigfb (double _sigfb) {sigfb=_sigfb;};
+        const double& GetSigfb () const {return sigfb;}
+
         void SetDens (double _dens) {dens=_dens;}
         const double& GetDens () const {return dens;}
+
+        // generate random W_fb where each entry is -1 or 1
+        void RandomW_fb ();
 
         // generate random W_in where each entry is -1 or 1
         void RandomW_in ();
@@ -186,7 +200,7 @@ class BakersMap : public DiscreteTimeSeries {
 // T : teacher matrix
 // M : state matrix
 // b : RR parameter
-// returns the matrix (W_out) that minimizeds the RR error function 
+// returns the matrix (W_out) that minimizes the RR error function 
 Matrix<double> RidgeRegress(Matrix<double> T, Matrix<double> M, double b) {
     //build the matrix M * M.T() + b * I and invert
     Matrix<double> temp = M.T()*M;
