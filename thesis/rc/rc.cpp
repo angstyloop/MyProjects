@@ -220,7 +220,7 @@ void DiscreteTimeSeries::Wash (int n) {
 // BakersMap class method definitions
 void BakersMap::Map (void) {
     using namespace std;
-    //const double& x=(*this)[prev][0], y=(*this)[prev][1], a=param;
+    double& x=(*this)[prev][0], y=(*this)[prev][1];
     //Vector temp(2);
     /*if (x<-c/2 || x>c/2 || y<-c/2 || y>c/2) {
         std::cout << "x: " << x << ", y: "<< y<< std::endl;

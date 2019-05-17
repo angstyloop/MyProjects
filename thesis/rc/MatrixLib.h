@@ -351,7 +351,7 @@ class Matrix {
         void zero();
 
         Matrix<double> RandomZeroes(int);
-        void RandomReals();
+        void RandomReals(double begin=-1, double end=1);
 
         void GenerateSymmetricReservoir (Matrix&, Matrix&, double);
 
@@ -401,7 +401,7 @@ class AugMatrix : public Matrix<double> {
 };
 
 // define scalar * matrix multiplication
-Matrix<double> operator*(double c, Matrix<double>& m) {
+Matrix<double> operator*(double c, Matrix<double> m) {
     Matrix<double> res (m.nrow(), m.ncol());
     for (int i=0; i<m.nrow(); ++i)
         for (int j=0; j<m.ncol(); ++j)
@@ -651,6 +651,8 @@ void Matrix<type>::zero() {
         for (int j=0; j<ncol(); ++j)
             M[i][j] = 0;
 }
+
+
 // randomly assigns real numbers in the interval [begin, end] to dens randomly selected
 //  entries of a matrix. to get a randomly generated matrix, just make a new uninitialized matrix
 //  and call random(). if a real zero is randomly generated for the entry, random() re-rolls. 
@@ -776,13 +778,15 @@ Matrix<double> Matrix<double>::RandomZeroes(int z) {
             ,   j_dist (0, ncol()-1)
             ;
 
-        int     i = i_dist(i_gen)
-            ,   j = j_dist(j_gen)
+        int     i = 0
+            ,   j = 0
             ,   k = 0
             ;
 
         while (k<z) {
-            if (res[i][j] > 0) {
+            i = i_dist(i_gen);
+            j = j_dist(j_gen);
+            if (res[i][j]*res[i][j] > 0) {
                 res[i][j] = 0;
                 ++k;
             }
@@ -833,14 +837,14 @@ Matrix<double> Matrix<double>::RandomZeroes(int z) {
 
 // fill matrix with random real entries from interval [-1,1]
 template <>
-void Matrix<double>::RandomReals() {
+void Matrix<double>::RandomReals(double begin, double end) {
 
     std::default_random_engine 
         x_gen(rd())
         ;
 
     std::uniform_real_distribution<double>
-        x_dist (-1, 1)
+        x_dist (begin, end)
         ;
 
     // assign a random real number to each entry
@@ -923,3 +927,10 @@ double Matrix<double>::LargEigvl (void) {
     return curr_eig;
 }
 
+Matrix<double> Tanh(Matrix<double> M) {
+    Matrix<double> res (M.nrow(), M.ncol());
+    for (int i=0; i<M.nrow(); ++i)
+        for (int j=0; j<M.ncol(); ++j)
+            res[i][j] = tanh(M[i][j]);
+    return res;
+}

@@ -184,8 +184,8 @@ class EchoStateNetwork : public DiscreteTimeSeries {
 class BakersMap : public DiscreteTimeSeries {
     protected:
         double a, c;
-        //xdouble x=xdouble(0)/*xdouble(3)/xdouble(255)*/;
-        //xdouble y=xdouble(0)/*xdouble(192)/xdouble(255)*/;
+        xdouble x=xdouble(3)/xdouble(255);
+        xdouble y=xdouble(192)/xdouble(255);
 
     public:
         BakersMap (Vector start, int steps, double _a, double _c)
