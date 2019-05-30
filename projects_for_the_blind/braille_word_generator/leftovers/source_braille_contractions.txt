@@ -1,0 +1,213 @@
+ab
+abv
+ac
+acr
+afn
+afw
+ag
+agst
+ally
+	alm
+	alr
+	al
+	alth
+	alt
+	alw
+ance
+and
+ar
+as	1356
+ation	61345
+B
+bb	23
+be	23
+	bec
+	bef
+	beh
+	bel
+	ben
+	bes
+	bet
+	bey
+ble	3456
+	bl
+	brl
+but	12
+by	356
+C
+can	14
+cannot	45614
+cc	25
+ch	16
+character	516
+child	16
+	chn
+com	36
+con	25
+	concv
+	concvg
+	cd
+D
+day	145
+dd	256
+	dcv
+	dcl
+	dclg
+dis	256
+do	145
+E
+ea	2
+ed	1246
+	ei
+en	26
+ence	15
+enough	26
+er	12456
+ever	515
+every	15
+F
+father	5124
+ff	235
+	fst
+for	123456
+	fr
+from	124
+ful	56123
+G
+gg	2356
+gh	126
+go	1245
+	gd
+	grt
+H
+had	456125
+have	125
+here	5125
+	herf
+	hm
+	hmf
+his	236
+I
+	imm
+in	35
+ing	346
+into	35235
+it	1346
+	xs
+	xf
+ity	5613456
+J
+just	245
+K
+know	513
+knowledge	13
+L
+less	46234
+	lr
+like	123
+	ll
+lord	5123
+M
+many	456134
+ment	562345
+more	134
+mother	5134
+	mch
+	mst
+	myf
+N
+name	51345
+	nec
+	nei
+ness	56234
+not	1345
+O
+'clock	o'c
+of	12356
+one	5135
+	onef
+ong	561245
+ou	1256
+ought	51256
+ound	46145
+	ourvs
+ount	462345
+out	1256
+ow	246
+P
+	pd
+part	51234
+people	1234
+	percv
+
+	perh
+Q
+question	512345
+	qk
+quite	12345
+R
+rather	1235
+	rcv
+	rcvg
+	rjc
+	rjcg
+right	51235
+S
+	sd
+sh	146
+shall	146
+	shd
+sion	461345
+so	234
+some	5234
+spirit	456234
+st	34
+still	34
+	sch
+T
+th	1456
+that	2345
+the	2346
+their	4562346
+	themvs
+there	52346
+these	452346
+this	1456
+those	451456
+through	51456
+
+time	52345
+tion	561345
+to	235
+	td
+	tgr
+	tm
+	tn
+U
+under	5136
+upon	45136
+us	136
+V
+very	1236
+W
+was	356
+were	2356
+wh	156
+where	5156
+which	156
+whose	456156
+will	2456
+with	23456
+word	2456
+work	52456
+world	4562456
+	wd
+X
+Y
+you	13456
+young	513456
+	yr
+	yrf
+	yrvs
+Z
+
