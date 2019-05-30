@@ -9,11 +9,20 @@
 //#include<iostream>
 #include<map>
 #include<utility>
+#include<vector>
 #include "./possibles.cpp"
 
-bool match(std::string s1, std::string s2) {
+//define aliases
+using s_t = std::string;                            //string
+using v_t = std::vector<std::string>;               //string vector
+using vl_t = std::list<std::vector<std::string>>;   //vector list
+using sl_t = std::list<std::string>;                //string list
+
+
+bool match(s_t s1, s_t s2) {
+
     //figure out which string is smaller
-    std::string *big_pt, *small_pt; 
+    s_t *big_pt, *small_pt; 
     if (s1.size() > s2.size()) {
         big_pt = &s1;
         small_pt = &s2;
@@ -21,8 +30,10 @@ bool match(std::string s1, std::string s2) {
         big_pt = &s2;
         small_pt = &s1;
     }
-    const std::string& big = *big_pt;
-    const std::string& small = *small_pt;
+    // use references for clarity
+    const s_t& big = *big_pt;
+    const s_t& small = *small_pt;
+
     //check every character in small against the
     //  character in big with the same index,
     //  starting at 0. when a character fails
@@ -35,34 +46,10 @@ bool match(std::string s1, std::string s2) {
     return true;
 }
 
-//std::list<std::string> possible (char first_letter) {
-    //std::map<char, std::list<std::string>> possibles;
 
-    //possibles.insert({'a',{"a", "ab", "abc"}});
-    //possibles.insert({'b',{"b", "bc"}});
-    //possibles.insert({'c',{"c"}});
-
-    //return possibles[first_letter];
-    //switch (first_letter) {
-        //case 'a':
-            //return std::list<std::string> {"a", "ab", "abc"};
-        //case 'b':
-            //return std::list<std::string> {"b", "bc"};
-        //case 'c':
-            //return std::list<std::string> {"c"};
-        //default:
-            //exit(EXIT_FAILURE);
-
-    //}
-//}
-
-
-void
-helper( std::list<std::string>& Q
-    ,   std::string memo
-    ,   std::string str )
-{
-    std::list<std::string> list;
+void helper( vl_t & Q, v_t memo, s_t str ) {
+    // list to store possible contractions
+    sl_t list;
 
     if (str == "") {
         //std::cout << "Adding " + memo + "to the queue." 
@@ -74,14 +61,15 @@ helper( std::list<std::string>& Q
     else {
         //std::cout << "Current character: " << str[0] << '\n';
         list = possibles(str[0]);
-        for ( auto x : list)
+        for ( s_t x : list)
             // if the contraction x fails to match
             //  or is too long for what's left of
             //  the string, helper isn't called.
             if (x.size() <= str.size() && match(x, str)) {
                 //std::cout<< x << " does match."  <<std::endl;
+                memo.push_back(x);
                 helper( Q
-                ,   memo + "(" + x + ")"
+                ,   memo
                 ,   str.substr(x.size(), str.size()-x.size())
                 );
             }
@@ -89,15 +77,15 @@ helper( std::list<std::string>& Q
     }
 }
 
-std::list<std::string> 
-contractify ( std::string word ){
-    std::list<std::string> Q;
-    helper (Q, "", word);
+vl_t contractify ( s_t word ){
+    vl_t Q;
+    v_t memo;
+    helper (Q, memo, word);
     return Q; 
 }
 
 int main() {
-    std::list<std::string> str_list = {
+    sl_t str_list = {
         "vegetable"
     ,   "cucumber"
     ,   "hypothesis"
@@ -114,11 +102,14 @@ int main() {
 
                 ;
 
-    for (auto str : str_list) {
-        auto Q = contractify(str);
+    for (s_t str : str_list) {
+        vl_t Q = contractify(str);
         std::cout << str << ":\n";
-        for (auto x : Q)
-            std::cout << x << std::endl;
+        for (v_t vec : Q) {
+            for (s_t elem : vec)
+                std::cout << elem << " | ";
+            std::cout << std::endl;
+        }
         std::cout << std::endl;
     }
 }
