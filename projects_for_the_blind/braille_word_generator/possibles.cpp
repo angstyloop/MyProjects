@@ -1,3 +1,9 @@
+// Given a lowercase letter character, returns a list of 
+//  contractions* starting with that letter.
+
+// Only single character contractions are used. Wordsigns
+//  and other rules will be added in later.
+
 #include<list>
 #include<string>
 #include <iostream>
@@ -6,272 +12,303 @@ std::list<std::string> possibles (char first_letter) {
   switch(first_letter) {
     case 'a':
       return std::list<std::string> {
-         "ab"
-      ,  "abv"
-      ,  "ac"
-      ,  "acr"
-      ,  "afn"
-      ,  "afw"
-      ,  "ag"
-      ,  "agst"
-      ,  "ally"
-      ,  "alm"
-      ,  "alr"
-      ,  "al"
-      ,  "alth"
-      ,  "alt"
-      ,  "alw"
+         "a"
+      //,  "ab"
+      //,  "abv"
+      //,  "ac"
+      //,  "acr"
+      //,  "afn"
+      //,  "afw"
+      //,  "ag"
+      //,  "agst"
+      //,  "ally"
+      //,  "alm"
+      //,  "alr"
+      //,  "al"
+      //,  "alth"
+      //,  "alt"
+      //,  "alw"
       ,  "ance"
       ,  "and"
       ,  "ar"
       ,  "as"
-      ,  "ation"
       };
     case 'b':
       return std::list<std::string> {
-         "bb"
+         "b"
+      ,  "bb"
       ,  "be"
-      ,  "bec"
-      ,  "bef"
-      ,  "beh"
-      ,  "bel"
-      ,  "ben"
-      ,  "bes"
-      ,  "bet"
-      ,  "bey"
-      ,  "ble"
-      ,  "bl"
-      ,  "brl"
+      //,  "bec"
+      //,  "bef"
+      //,  "beh"
+      //,  "bel"
+      //,  "ben"
+      //,  "bes"
+      //,  "bet"
+      //,  "bey"
+      //,  "ble"
+      //,  "bl"
+      //,  "brl"
       ,  "but"
       ,  "by"
       };
     case 'c':
       return std::list<std::string> {
-         "can"
-      ,  "cannot"
+         "c"
+      ,  "can"
+      //,  "cannot"
       ,  "cc"
       ,  "ch"
       ,  "character"
-      ,  "child"
-      ,  "chn"
-      ,  "com"
+      //,  "child"
+      //,  "chn"
+      //,  "com"
       ,  "con"
-      ,  "concv"
-      ,  "concvg"
-      ,  "cd"
+      //,  "concv"
+      //,  "concvg"
+      //,  "cd"
       };
     case 'd':
       return std::list<std::string> {
-         "day"
+         "d"
+      ,  "day"
       ,  "dd"
-      ,  "dcv"
-      ,  "dcl"
-      ,  "dclg"
+      //,  "dcv"
+      //,  "dcl"
+      //,  "dclg"
       ,  "dis"
       ,  "do"
       };
     case 'e':
       return std::list<std::string> {
-         "ea"
+         "e"
+      ,  "ea"
       ,  "ed"
       ,  "ei"
       ,  "en"
       ,  "ence"
-      ,  "enough"
+      //,  "enough"
       ,  "er"
       ,  "ever"
       ,  "every"
       };
     case 'f':
       return std::list<std::string> {
-         "father"
+         "f"
+      ,  "father"
       ,  "ff"
-      ,  "fst"
+      //,  "fst"
       ,  "for"
-      ,  "fr"
+      //,  "fr"
       ,  "from"
       ,  "ful"
       };
     case 'g':
       return std::list<std::string> {
-         "gg"
+         "g"
+      ,  "gg"
       ,  "gh"
       ,  "go"
-      ,  "gd"
-      ,  "grt"
+      //,  "gd"
+      //,  "grt"
       };
     case 'h':
       return std::list<std::string> {
-         "had"
+         "h"
+      ,  "had"
       ,  "have"
       ,  "here"
-      ,  "herf"
-      ,  "hm"
-      ,  "hmf"
-      ,  "his"
+      //,  "herf"
+      //,  "hm"
+      //,  "hmf"
+      //,  "his"
       };
     case 'i':
       return std::list<std::string> {
-         "imm"
+         "i"  
+      //,  "imm"
       ,  "in"
       ,  "ing"
-      ,  "into"
+      //,  "into"
       ,  "it"
       ,  "ity"
       };
-    case 'x':
-      return std::list<std::string> {
-         "xs"
-      ,  "xf"
-      };
     case 'j':
       return std::list<std::string> {
-         "just"
+         "j"
+      ,  "just"
       };
     case 'k':
       return std::list<std::string> {
-         "know"
+         "k"
+      ,  "know"
       ,  "knowledge"
       };
     case 'l':
       return std::list<std::string> {
-         "less"
-      ,  "lr"
+         "l"
+      ,  "less"
+      //,  "lr"
       ,  "like"
-      ,  "ll"
+      //,  "ll"
       ,  "lord"
       };
     case 'm':
       return std::list<std::string> {
-         "many"
+         "m"
+      ,  "many"
       ,  "ment"
       ,  "more"
       ,  "mother"
-      ,  "mch"
-      ,  "mst"
-      ,  "myf"
+      //,  "mch"
+      //,  "mst"
+      //,  "myf"
       };
     case 'n':
       return std::list<std::string> {
-         "name"
-      ,  "nec"
-      ,  "nei"
+         "n"
+      ,  "name"
+      //,  "nec"
+      //,  "nei"
       ,  "ness"
       ,  "not"
       };
     case 'o':
       return std::list<std::string> {
-         "o\'c"
+         "o"
+      //,  "o\'c"
       ,  "of"
       ,  "one"
-      ,  "onef"
+      //,  "onef"
       ,  "ong"
       ,  "ou"
       ,  "ought"
       ,  "ound"
-      ,  "ourvs"
+      //,  "ourvs"
       ,  "ount"
-      ,  "out"
+      //,  "out"
       ,  "ow"
       };
     case 'p':
       return std::list<std::string> {
-         "pd"
+         "p"
+      //,  "pd"
       ,  "part"
       ,  "people"
-      ,  "percv"
-      ,  "perh"
+      //,  "percv"
+      //,  "perh"
       };
     case 'q':
       return std::list<std::string> {
-         "question"
-      ,  "qk"
+         "q"
+      ,  "question"
+      //,  "qk"
       ,  "quite"
       };
     case 'r':
       return std::list<std::string> {
-         "rather"
-      ,  "rcv"
-      ,  "rcvg"
-      ,  "rjc"
-      ,  "rjcg"
+         "r"
+      ,  "rather"
+      //,  "rcv"
+      //,  "rcvg"
+      //,  "rjc"
+      //,  "rjcg"
       ,  "right"
       };
     case 's':
       return std::list<std::string> {
-         "sd"
+         "s" 
+      //,  "sd"
       ,  "sh"
-      ,  "shall"
-      ,  "shd"
+      //,  "shall"
+      //,  "shd"
       ,  "sion"
       ,  "so"
       ,  "some"
       ,  "spirit"
       ,  "st"
-      ,  "still"
-      ,  "sch"
+      //,  "still"
+      //,  "sch"
       };
     case 't':
       return std::list<std::string> {
-         "th"
+         "t"
+      ,  "th"
       ,  "that"
       ,  "the"
       ,  "their"
-      ,  "themvs"
+      //,  "themvs"
       ,  "there"
       ,  "these"
-      ,  "this"
+      //,  "this"
       ,  "those"
       ,  "through"
       ,  "time"
       ,  "tion"
       ,  "to"
-      ,  "td"
-      ,  "tgr"
-      ,  "tm"
-      ,  "tn"
+      //,  "td"
+      //,  "tgr"
+      //,  "tm"
+      //,  "tn"
       };
     case 'u':
       return std::list<std::string> {
-         "under"
-      ,  "upon"
-      ,  "us"
+         "u"
+      //,  "under"
+      //,  "upon"
+      //,  "us"
       };
     case 'v':
       return std::list<std::string> {
-         "very"
+         "v"
+      //,  "very"
       };
     case 'w':
       return std::list<std::string> {
-         "was"
-      ,  "were"
-      ,  "wh"
-      ,  "where"
-      ,  "which"
+         "w"
+      //,  "was"
+      //,  "were"
+      //,  "wh"
+      //,  "where"
+      //,  "which"
       ,  "whose"
       ,  "will"
       ,  "with"
       ,  "word"
       ,  "work"
       ,  "world"
-      ,  "wd"
+      //,  "wd"
+      };
+    case 'x':
+      return std::list<std::string> {
+         "x"
+      //,  "xs"
+      //,  "xf"
       };
     case 'y':
       return std::list<std::string> {
-         "you"
+         "y"
+      ,  "you"
       ,  "young"
-      ,  "yr"
-      ,  "yrf"
-      ,  "yrvs"
+      //,  "yr"
+      //,  "yrf"
+      //,  "yrvs"
       };
-    default:       //return empty list if input str doesnt match any contractions
-      return std::list<std::string> {};
+    case 'z':
+      return std::list<std::string> {
+          "z"
+      };
+    default:    
+      //return std::list<std::string> {""};
+      std::cout << "possibles(): encountered unexpected character"
+                << std::endl;
+      exit(EXIT_FAILURE);
   }
 }
 
-int main () {
-    std::list<std::string> list = possibles('y');
-    for (auto x : list)
-        std::cout << x << " ";
-    std::cout << std::endl;
-}
+//int main () {
+    //std::list<std::string> list = possibles('a');
+    //for (auto x : list)
+        //std::cout << x << " ";
+    //std::cout << std::endl;
+//}
