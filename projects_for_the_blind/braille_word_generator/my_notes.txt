@@ -1,0 +1,17 @@
+// my own notes and a list of things to do
+
+[] Get a dictionary of words.
+
+[] Parse the dictionary into a list of strings.
+
+[] Given a dictionary of words, store the list of contraction partitions for each word
+    in a relational database. Maybe look into SQL / MySQL?
+
+[] Given a database of words and their possible contraction, remove contractions
+    that are contrary the spirit of braille:
+    1. [] word signs
+    2. [] ...
+    3. [] ...
+    ...
+
+..
