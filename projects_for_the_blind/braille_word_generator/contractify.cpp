@@ -87,15 +87,17 @@ void helper( vl_t & Q, v_t memo, s_t str ) {
             //  the string, helper isn't called.
             if (contr.size() <= str.size() && match(contr, str)) {
 
-                // push the contraction contr into the string vector
-                //  memo representing the partitioned word so far.
-                memo.push_back(contr);
+                // Copy the string vector memo into the local variable
+                //   local_memo, and then push the contraction contr into
+                //   local_memo representing the partitioned word so far.
+                v_t local_memo = memo;
+                local_memo.push_back(contr);
 
-                // call helper recursively with the new memo,
-                //  and the substring formed by removing contr
-                //  from the beginning of the word string str.
+                // Call helper recursively with the new memo,
+                //   and the substring formed by removing contr
+                //   from the beginning of the word string str.
                 helper( Q
-                ,   memo
+                ,   local_memo
                 ,   str.substr(contr.size(), str.size()-contr.size())
                 );
             }
@@ -129,7 +131,6 @@ int main() {
 
     std::cout   << 
 "\ncontractify(word) should return all possible partitionings\n of word, using only the single-character contractions listed\n in possibles.cpp.\n\n Here are some examples:\n\n" 
-
                 ;
 
     for (s_t str : str_list) {
