@@ -1,0 +1,75 @@
+#include <fstream>
+#include <iostream>
+#include <cstdlib>
+using std::cin;
+using std::cout;
+using std::endl;
+using std::ifstream;
+using std::ofstream;
+using std::ios;
+using std::string;
+
+
+class card {
+public:
+  int width = 50;
+  string
+    id    = ""
+  , front = ""
+  , back  = ""
+  ;
+  card () {}
+  card (int w): width(w) {}
+
+  virtual card
+    & format_to_width()
+  , & read_front()
+  , & read_back()
+  , & show_front()
+  , & show_back()
+  ;
+//  void 
+//    write_card()
+//  , read_card()
+//  , search_card()
+//  , edit_card()
+//  , delete_card()
+//  ;
+};
+
+class mono_card: public card {
+public:
+  card& component;
+  mono_card(card& c): card(c.width), component(c) {}
+  virtual mono_card
+    & format_to_width()
+  , & read_front()
+  , & read_back()
+  , & show_front()
+  , & show_back()
+  ; 
+};
+
+class border: public mono_card {
+public:
+  border(card& c): mono_card(c) {}
+  virtual border
+    & format_to_width()
+  , & read_front()
+  , & read_back()
+  , & show_front()
+  , & show_back()
+  ;
+};
+
+class side: public mono_card {
+public:
+  side(card& c): mono_card(c) {}
+  virtual side
+    & format_to_width()
+  , & read_front()
+  , & read_back()
+  , & show_front()
+  , & show_back()
+  ;
+}
