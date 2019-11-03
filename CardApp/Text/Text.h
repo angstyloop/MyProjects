@@ -37,5 +37,6 @@ public:
   Text& operator=(Text&&);
   Text(string text, size_t width); 
   string toString() const;
+  string toFormattedString() const;
   Text& test();
 };

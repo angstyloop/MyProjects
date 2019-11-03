@@ -13,6 +13,7 @@ using std::string;
 
 class Card {
 private:
+  static int count;
   int width = 50;
   string id = "";
   Text front;
@@ -24,8 +25,10 @@ public:
   int getWidth() const;
   void setWidth(int);
   string getFront() const;
+  string getFormattedFront() const;
   void setFront(string);
   string getBack() const;
+  string getFormattedBack() const;
   void setBack(string);
   string getInputString(string prompt = "");
   Card& setFrontFromInput();
@@ -34,5 +37,7 @@ public:
   Card& showBack();
   Card& writeFrontToFile();
   Card& writeBackToFile();
+  Card& writeFormattedFrontToFile();
+  Card& writeFormattedBackToFile();
   Card& test();
 };

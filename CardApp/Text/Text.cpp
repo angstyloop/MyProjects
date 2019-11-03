@@ -78,8 +78,19 @@ Text::Text(string text, size_t w): width{w} {
 }
 
 string Text::toString() const {
+    OStringStream oss;
+    for_each(linePtrVec.begin(), prev(linePtrVec.end()), [&](Line* linePtr) { 
+        oss << linePtr->toString() << '\n'; 
+    });
+    oss << linePtrVec.back()->toString(); //don't print trailing newline
+    return oss.str();
+}
+
+string Text::toFormattedString() const {
   OStringStream oss;
-  for_each(linePtrVec.begin(), prev(linePtrVec.end()), [&](Line* linePtr){ oss << linePtr->toFormattedString() << '\n';  });
+  for_each(linePtrVec.begin(), prev(linePtrVec.end()), [&](Line* linePtr) { 
+      oss << linePtr->toFormattedString() << '\n';
+  });
   oss << linePtrVec.back()->toFormattedString(); // don't print trailing newline.
   return oss.str();
 }
@@ -97,6 +108,8 @@ Text& Text::test() {
 
   //this is just to see what it looks like
   string s = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
+  cout << Text(s, 50).toFormattedString() << endl;
+  cout << '\n';
   cout << Text(s, 50).toString() << endl;
   return *this;
 }

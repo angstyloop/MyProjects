@@ -1,6 +1,7 @@
 #include <string>
 #include <algorithm>
 #include <list>
+#include "../Box/Box.h"
 
 using std::list;
 using std::string;
@@ -27,7 +28,7 @@ struct Border {
 
 class Line {
   list<string> words;
-  Padding padding;
+  Box padding {' '};
   Border border {'*'};
  public:
   size_t width() const;

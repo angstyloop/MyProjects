@@ -25,8 +25,12 @@ void Card::setWidth(int w) {
   width = w; 
 }
 
-string Card::getFront() const {
-  return front.toString();
+string Card::getFront() const { 
+    return front.toString(); 
+}
+
+string Card::getFormattedFront() const {
+  return front.toFormattedString();
 }
 
 void Card::setFront(string s) {
@@ -34,7 +38,11 @@ void Card::setFront(string s) {
 }
 
 string Card::getBack() const {
-  return back.toString();
+    return back.toString();
+}
+
+string Card::getFormattedBack() const {
+  return back.toFormattedString();
 }
 
 void Card::setBack(string s) {
@@ -62,39 +70,35 @@ Card& Card::setBackFromInput() {
 }
 
 Card& Card::showFront() {
-  cout << getFront() << endl;
+  cout << getFormattedFront() << endl;
   return *this;
 }
 
 Card& Card::showBack() {
-  cout << getBack() << endl;
+  cout << getFormattedBack() << endl;
   return *this;
 }
 
-Card& Card::writeFrontToFile() {
+Card& Card::writeFrontToFile() {}
+
+Card& Card::writeBackToFile() {}
+
+Card& Card::writeFormattedFrontToFile() {
     ofstream ofs (id + "_front.txt", std::ios_base::trunc);
-    ofs << getFront();
+    ofs << getFormattedFront();
     return *this;
 }
 
-Card& Card::writeBackToFile() {
+Card& Card::writeFormattedBackToFile() {
     ofstream ofs(id + "_back.txt", std::ios_base::trunc);
+    ofs << getFormattedBack();
     return *this;
-}
-
-void redirectStandardOutput() {
-    ofstream os ("doesntexist4023847.txt", std::ios_base::trunc);
-    auto cout_buf = cout.rdbuf(os.rdbuf());
-    cout << "writes to the file now";
-    cout.rdbuf(cout_buf);
-    cout << "writes to standard output again.";
 }
 
 Card& Card::test() {
- Card c = Card().setFrontFromInput().setBackFromInput().writeFrontToFile().writeBackToFile();
- //cout << c.getFront() << endl;
- ifstream is ("temp.txt");
- cout << is.rdbuf();
+ Card c = Card().setFrontFromInput().setBackFromInput().writeFormattedFrontToFile().writeFormattedBackToFile();
+ ifstream is_front ("_front.txt"), is_back("_back.txt");
+ cout << is_front.rdbuf() << "\n\n" << is_back.rdbuf();
  return *this;
 }
 
