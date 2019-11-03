@@ -1,15 +1,20 @@
 
 #include<iostream> 
 using namespace std; 
+
+template <class T>
+class MyClass {
+    string value;
+  public:
+    //MyClass() {}
+    MyClass(T s): value{s} {}
+};
+
+MyClass<string> myFun() {
+    return MyClass<string>{"foo"};
+}
   
-int fun() 
-{ 
-    static int x = 10; 
-    return x; 
-} 
 int main() 
 { 
-    fun() = 30; 
-    cout << fun(); 
-    return 0; 
+    return 0;
 } 

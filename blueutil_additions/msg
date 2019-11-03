@@ -1,0 +1,10 @@
+mac_address="$1"
+echo mac_address is $1
+tmp="/tmp/helloworld.txt"
+osascript<<EOF
+with timeout of 60 seconds
+   tell application "Bluetooth File Exchange"
+      send file "$tmp" as string to device "$mac_address"
+   end tell
+end timeout
+EOF

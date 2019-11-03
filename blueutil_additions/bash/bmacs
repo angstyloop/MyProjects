@@ -1,0 +1,2 @@
+#!/bin/bash
+blueutil --paired | sed 's/^.*address: \([^, ]*\).*\"\(.*\)\".*$/\2 \1/'

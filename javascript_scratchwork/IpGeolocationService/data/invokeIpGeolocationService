@@ -1,0 +1,43 @@
+#!/bin/bash
+#sean@dfstudio
+#20190814
+#Use `aws lambda invoke` to invoke lambda function IpGeolocationService.
+
+#User input ip address.
+ip=$1;
+
+#Check usage and ip address format.
+function usageError {
+  echo "[ERROR] Incorrect usage of invokeIpGeolocationService."
+  echo "Example usage: invokeIpGeolocationService 1.1.1.1";
+  exit 1;
+}
+[[ $ip =~ [0-255]\.[0-255]\.[0-255]\.[0-255] ]] || usageError;
+
+#Temporary files.
+tempEventJSONFile="IpGeolocationServiceEvent.json.temp";
+tempResponseFile="IpGeolocationServiceResponse.json.temp";
+
+function rmTempFiles {
+  rm -f $tempEventJSONFile;
+  rm -f $tempResponseFile;
+}
+
+#Build JSON for request to service.
+printf '{"queryStringParameters":{"ip": "%s"}}' $ip > $tempEventJSONFile;
+
+#AWS Lambda CLI `invoke`.	
+aws lambda invoke --function-name IpGeoLocationService --payload "file://${tempEventJSONFile}" $tempResponseFile;
+
+#Exit if there were AWS errors.
+[ $? > 0 ] && rmTempFiles && exit 1;
+
+#Print response to stdout.
+echo
+echo "IpGeolocationService response:";
+echo
+cat $tempResponseFile;
+
+#Cleanup.
+rmTempFiles
+
