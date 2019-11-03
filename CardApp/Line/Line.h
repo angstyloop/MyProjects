@@ -29,7 +29,7 @@ struct Border {
 class Line {
   list<string> words;
   Box padding {' '};
-  Border border {'*'};
+  Box border {'*'};
  public:
   size_t width() const;
   size_t height() const;

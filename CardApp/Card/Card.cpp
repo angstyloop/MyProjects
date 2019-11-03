@@ -79,9 +79,9 @@ Card& Card::showBack() {
   return *this;
 }
 
-Card& Card::writeFrontToFile() {}
+Card& Card::writeFrontToFile() { return *this; }
 
-Card& Card::writeBackToFile() {}
+Card& Card::writeBackToFile() { return *this; }
 
 Card& Card::writeFormattedFrontToFile() {
     ofstream ofs (id + "_front.txt", std::ios_base::trunc);
