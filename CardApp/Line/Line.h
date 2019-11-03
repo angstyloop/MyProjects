@@ -1,7 +1,7 @@
 #include <string>
 #include <algorithm>
 #include <list>
-#include "../Box/Box.h"
+#include "../Box/Box.cpp"
 
 using std::list;
 using std::string;

@@ -26,31 +26,31 @@ size_t Line::width() const {
   for (auto s: words)
     w += s.size();
   w += words.size() - 1; // spaces
-  w += border.left + padding.left + padding.right + border.right;
+  w += border.getLeft() + padding.getLeft() + padding.getRight() + border.getRight();
   return w;
 }
 
 size_t Line::height() const {
-  return border.top + padding.top + padding.bottom + border.bottom + 1;
+  return border.getTop() + padding.getTop() + padding.getBottom() + border.getBottom() + 1;
 }
 
 Line& Line::setBorderTop(size_t width) { 
-    border.top = width; 
+    border.setTop(width); 
     return *this;
 }
 
 Line& Line::setBorderBottom(size_t width) {
-    border.bottom = width;
+    border.setBottom(width);
     return *this;
 }
 
 Line& Line::setBorderLeft(size_t width) {
-    border.left = width;
+    border.setLeft(width);
     return *this;
 }
 
 Line& Line::setBorderRight(size_t width) {
-    border.right = width;
+    border.setRight(width);
     return *this;
 }
 
@@ -63,31 +63,31 @@ string drawLine(char token, size_t length, size_t thickness) {
     return oss.str();
 }
 
-string Line::drawBorderTop() const { return drawLine(border.token, width(), border.top); }
+string Line::drawBorderTop() const { return drawLine(border.getToken(), width(), border.getTop()); }
 
-string Line::drawBorderBottom() const { return drawLine(border.token, width(), border.bottom); } 
+string Line::drawBorderBottom() const { return drawLine(border.getToken(), width(), border.getBottom()); } 
 
-string Line::drawBorderLeft() const { return string(border.left, border.token); }
+string Line::drawBorderLeft() const { return string(border.getLeft(), border.getToken()); }
 
-string Line::drawBorderRight() const { return string(border.right, border.token); }
+string Line::drawBorderRight() const { return string(border.getRight(), border.getToken()); }
 
 Line& Line::setPaddingTop(size_t width) {
-    padding.top =  width;
+    padding.setTop(width);
     return *this;
 }
 
 Line& Line::setPaddingBottom(size_t width) {
-    padding.bottom =  width;
+    padding.setBottom(width);
     return *this;
 }
 
 Line& Line::setPaddingLeft(size_t width) {
-    padding.left =  width;
+    padding.setLeft(width);
     return *this;
 }
 
 Line& Line::setPaddingRight(size_t width) {
-    padding.right =  width;
+    padding.setRight(width);
     return *this;
 }
 
@@ -103,18 +103,17 @@ string Line::toFormattedString() {
   OStringStream oss;
 
   oss << drawBorderTop();
-  oss << string(padding.top, '\n');
+  oss << string(padding.getTop(), '\n');
   oss << drawBorderLeft();
-  oss << string(padding.left, ' ');
+  oss << string(padding.getLeft(), ' ');
 
   oss << toString();
 
-  oss << string(padding.right, ' ');
+  oss << string(padding.getRight(), ' ');
   oss << drawBorderRight();
-  oss << string(padding.bottom, '\n');
-  if (border.bottom > 0) {
+  oss << string(padding.getBottom(), '\n');
+  if (border.getBottom())
     oss << '\n' << drawBorderBottom();
-  }
 
   return oss.str();
 }

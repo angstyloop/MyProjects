@@ -22,6 +22,7 @@ public:
   Card();
   Card(int w);
   Card(string f, string b);
+
   int getWidth() const;
   void setWidth(int);
   string getFront() const;
@@ -33,11 +34,17 @@ public:
   string getInputString(string prompt = "");
   Card& setFrontFromInput();
   Card& setBackFromInput();
+
   Card& showFront();
   Card& showBack();
+
   Card& writeFrontToFile();
   Card& writeBackToFile();
   Card& writeFormattedFrontToFile();
   Card& writeFormattedBackToFile();
+
+  Card& readFileIntoFront(string filename);
+  Card& readFileIntoBack(string filename);
+
   Card& test();
 };

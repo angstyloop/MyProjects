@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <cstdlib>
 #include "Card.h"
 
@@ -10,6 +11,7 @@ using std::ofstream;
 using std::ios;
 using std::getline;
 using std::stringstream;
+using std::istreambuf_iterator;
 
 Card::Card() {}
 
@@ -79,26 +81,50 @@ Card& Card::showBack() {
   return *this;
 }
 
-Card& Card::writeFrontToFile() { return *this; }
+Card& Card::writeFrontToFile() { 
+    ofstream ofs (id + "_front.txt");
+    ofs << getFront();
+    return *this; 
+}
 
-Card& Card::writeBackToFile() { return *this; }
+Card& Card::writeBackToFile() { 
+    ofstream ofs (id + "_back.txt", std::ios_base::trunc);
+    ofs << getFormattedBack();
+    return *this; 
+}
 
 Card& Card::writeFormattedFrontToFile() {
-    ofstream ofs (id + "_front.txt", std::ios_base::trunc);
+    ofstream ofs (id + "_formatted_front.txt", std::ios_base::trunc);
     ofs << getFormattedFront();
     return *this;
 }
 
 Card& Card::writeFormattedBackToFile() {
-    ofstream ofs(id + "_back.txt", std::ios_base::trunc);
+    ofstream ofs(id + "_formatted_back.txt", std::ios_base::trunc);
     ofs << getFormattedBack();
+    return *this;
+}
+
+Card& Card::readFileIntoFront(string filename) {
+    ifstream ifs (filename);
+    setFront(string (istreambuf_iterator<char>(ifs), istreambuf_iterator<char>()));
+    return *this;
+}
+
+Card& Card::readFileIntoBack(string filename) {
+    ifstream ifs (filename);
+    setBack(string (istreambuf_iterator<char>(ifs), istreambuf_iterator<char>()));
     return *this;
 }
 
 Card& Card::test() {
  Card c = Card().setFrontFromInput().setBackFromInput().writeFormattedFrontToFile().writeFormattedBackToFile();
- ifstream is_front ("_front.txt"), is_back("_back.txt");
- cout << is_front.rdbuf() << "\n\n" << is_back.rdbuf();
+ ifstream ifs_formatted_front ("_formatted_front.txt");
+ ifstream ifs_formatted_back ("_formatted_back.txt");
+ cout << ifs_formatted_front.rdbuf() << "\n\n" << ifs_formatted_back.rdbuf();
+ c.readFileIntoFront("foofile.txt");
+ c.readFileIntoBack("barfile.txt");
+ c.showFront().showBack();
  return *this;
 }
 
