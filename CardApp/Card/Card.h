@@ -32,6 +32,7 @@ public:
   Card& setBackFromInput();
   Card& showFront();
   Card& showBack();
-  Card& writeToFile();
+  Card& writeFrontToFile();
+  Card& writeBackToFile();
   Card& test();
 };

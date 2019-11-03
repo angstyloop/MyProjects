@@ -71,16 +71,27 @@ Card& Card::showBack() {
   return *this;
 }
 
-Card& Card::writeToFile() {
-    ofstream os ("temp.txt", std::ios_base::trunc);
-    auto cout_buf = cout.rdbuf(os.rdbuf());
-    showFront().showBack();
-    cout.rdbuf(cout_buf);
+Card& Card::writeFrontToFile() {
+    ofstream ofs (id + "_front.txt", std::ios_base::trunc);
+    ofs << getFront();
     return *this;
 }
 
+Card& Card::writeBackToFile() {
+    ofstream ofs(id + "_back.txt", std::ios_base::trunc);
+    return *this;
+}
+
+void redirectStandardOutput() {
+    ofstream os ("doesntexist4023847.txt", std::ios_base::trunc);
+    auto cout_buf = cout.rdbuf(os.rdbuf());
+    cout << "writes to the file now";
+    cout.rdbuf(cout_buf);
+    cout << "writes to standard output again.";
+}
+
 Card& Card::test() {
- Card c = Card().setFrontFromInput().setBackFromInput().writeToFile();
+ Card c = Card().setFrontFromInput().setBackFromInput().writeFrontToFile().writeBackToFile();
  //cout << c.getFront() << endl;
  ifstream is ("temp.txt");
  cout << is.rdbuf();
