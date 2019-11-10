@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdlib>
 #include "../Text/Text.cpp"
+#include "../Deck/Deck.h"
 
 using std::cin;
 using std::cout;
@@ -10,9 +11,12 @@ using std::ifstream;
 using std::ofstream;
 using std::ios;
 using std::string;
+using std::shared_ptr;
 
 class Card {
 private:
+  string name = "";
+  string wdir = "/Users/sean/projects/CardApp/cards/example/";
   static int count;
   int width = 50;
   string id = "";
@@ -21,8 +25,13 @@ private:
 public:
   Card();
   Card(int w);
-  Card(string f, string b);
+  Card(string front, string back);
+  Card(shared_ptr<Deck>);
 
+  string getId() const;
+  Card& setId(string);
+  string getName() const;
+  Card& setName(string name);
   int getWidth() const;
   void setWidth(int);
   string getFront() const;
