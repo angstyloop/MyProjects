@@ -1,0 +1,4 @@
+#!/bin/bash
+
+boardId=$1
+./trello_api --endpoint "boards/$boardId/lists" --method POST --args "name=$2" | jq ".id" | tr -d \"

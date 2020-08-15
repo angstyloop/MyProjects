@@ -1,0 +1,9 @@
+#!/bin/bash
+
+ listId=$1
+ name=$2
+ cardId=$(./get_card_id "$listId" "$name")
+ if [ -z "$cardId" ]; then
+     cardId=$(./create_card "$listId" "$name")
+ fi
+ echo "$cardId"

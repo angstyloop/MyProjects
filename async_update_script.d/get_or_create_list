@@ -1,0 +1,9 @@
+#!/bin/bash
+
+boardId=$1
+name=$2
+listId=$(./get_list_id "$boardId" "$name")
+if [ -z "$listId" ]; then
+    listId=$(./create_list "$boardId" "$name")
+fi
+echo "$listId"

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+source trello_auth_creds
+
+curl "https://api.trello.com/1/members/me/boards?key=$TRELLO_API_KEY&response_type=token&token=$TRELLO_API_TOKEN"

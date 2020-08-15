@@ -1,0 +1,11 @@
+#!/bin/bash
+
+name=$1
+
+boardId=$(./get_board_id "$name" )
+
+if [ -z "$boardId" ]; then
+    boardId=$(./create_board "$name")
+fi
+
+echo "$boardId"
