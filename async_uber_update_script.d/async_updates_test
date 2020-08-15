@@ -33,9 +33,10 @@ done
 
 mkdir -p "./logs.d"
 glog="./logs.d/async_updates.log"
+touch $glog
 
 source trello_auth_creds
-./trello_auth > glog
+./trello_auth > $glog
 
 if [ -z "${args[boardId]}" ]; then
     args[boardId]=$(./get_board_id "TestBoard12345")
@@ -58,22 +59,30 @@ if [ -z "${args[newListId]}" ]; then
 fi
 
 declare -a brands=(
-    oodio
-    ucla
-    adobe
-    viacom
-    parkwoodent
-    ifc
-    invision
-    spectrum
-    spe
-    cbs
-    20thcentury
-    netflix
-    cwtv
-    hulu
-    warnerbros
-    enterprise
+    alpha
+    beta
+    gamma
+    delta
+    epsilon
+    zeta
+    eta
+    theta
+    iota
+    kappa
+    lambda
+    mu
+    nu
+    xi
+    omicron
+    pi
+    rho
+    sigma
+    tau
+    upsilon
+    phi
+    chi
+    psi
+    omega
 )
 
 declare -A cards
@@ -96,3 +105,6 @@ for brand in "${brands[@]}"; do
 done; wait
 
 # do something with logs
+
+# clean up
+rm -r logs.d
