@@ -1,7 +1,0 @@
-#!/bin/bash
-
-listId=$1
-name=$2
-./get_cards_on_list "$listId" | jq " .[] | select(.name==\"$name\") | .id" | tr -d \"
-
-

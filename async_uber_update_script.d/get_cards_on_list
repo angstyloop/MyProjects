@@ -1,4 +1,0 @@
-#!/bin/bash
-
-listId=$1
-./trello_api --endpoint "lists/$listId/cards" --method GET

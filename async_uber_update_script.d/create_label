@@ -1,7 +1,0 @@
-#!/bin/bash
-
-boardId=$1
-name=$2
-labelColor=$3
-
-./trello_api --endpoint "boards/$boardId/labels" --method POST --args "color=$labelColor" "name=$name"

@@ -1,9 +1,0 @@
-#!/bin/bash
-
-sleep $(($RANDOM%15))
-
-if [[ $RANDOM%10 -lt 5 ]]; then
-    exit 1 #fail
-else 
-    exit 0 #success
-fi

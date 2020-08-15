@@ -1,3 +1,0 @@
-#!/bin/bash
-
-./trello_api --endpoint organizations/dfstudio/boards --method GET 

@@ -1,4 +1,0 @@
-#!/bin/bash
-
-id=$1
-./trello_api --endpoint "boards/$id" --method DELETE

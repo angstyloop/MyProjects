@@ -1,7 +1,0 @@
-#!/bin/bash
-
-cardId=$1 #target card
-boardId=$2 #destination board
-listId=$3  #AND destination list. weird, I know.
- 
-./trello_api --endpoint "cards/$cardId" --method PUT --args "idBoard=$boardId" "idList=$listId"

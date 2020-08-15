@@ -1,3 +1,0 @@
-#!/bin/bash
-
-./trello_api --endpoint cards --method POST --args "idList=$1" "name=$2" | jq ".id" | tr -d \"

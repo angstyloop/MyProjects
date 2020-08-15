@@ -1,4 +1,0 @@
-#!/bin/bash
-
-labelId=$1
-./trello_api --endpoint "labels/$labelId" --method DELETE

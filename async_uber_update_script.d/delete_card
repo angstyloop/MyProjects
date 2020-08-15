@@ -1,4 +1,0 @@
-#!/bin/bash
-
-cardId=$1
-./trello_api --endpoint "cards/$cardId" --method DELETE

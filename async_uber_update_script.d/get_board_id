@@ -1,4 +1,0 @@
-#!/bin/bash
-
-name=$1
-./get_boards | jq " .[] | select(.name==\"$name\") | .id" | tr -d \" 

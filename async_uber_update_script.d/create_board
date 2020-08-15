@@ -1,3 +1,0 @@
-#!/bin/bash
-
-./trello_api --endpoint boards --method POST --args "name=$1" "idOrganization=dfstudio" | jq ".id" | tr -d \"

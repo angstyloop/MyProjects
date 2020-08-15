@@ -1,4 +1,0 @@
-#!/bin/bash
-
-listId=$1
-./trello_api --endpoint "lists/$listId/closed" --method PUT --args "value=true"
