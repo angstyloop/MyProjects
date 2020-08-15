@@ -1,0 +1,98 @@
+#!/bin/bash
+
+set -m # unixy async junk
+
+# named args
+declare -A args=( 
+    [newReleaseName]="New Release" 
+    [boardId]="" 
+    [successLabelId]="" 
+    [failLabelId]="" 
+    [oldListId]="" 
+    [newListId]="" 
+)
+for ((i=1; i<=$#; i++)); do
+    match=""
+    for it in "${!args[@]}"; do
+        if [ "--$it" == "${!i}" ]; then
+            ((i++))
+            args[$it]=${!i}
+            match=1
+        fi
+    done
+    if [ -z $match ]; then
+        i=1
+        for ((; i < ${#args[@]}; i++)); do
+            usageStr+="--${!i} <${!i}> | "
+        done
+        usageStr+="--${!i} <${!i}>" #last
+        echo "Usage: $usageStr"
+        exit 1
+    fi
+done
+
+mkdir -p "./logs.d"
+glog="./logs.d/async_updates.log"
+
+source trello_auth_creds
+./trello_auth > glog
+
+if [ -z "${args[boardId]}" ]; then
+    args[boardId]=$(./get_board_id "TestBoard12345")
+fi
+
+if [ -z "${args[successLabelId]}" ]; then
+    args[successLabelId]=$(./get_or_create_label "${args[boardId]}" "MyTestSuccessLabel" green)
+fi
+
+if [ -z "${args[failLabelId]}" ]; then
+    args[failLabelId]=$(./get_or_create_label "${args[boardId]}" "MyTestFailLabel" red)
+fi
+
+if [ -z "${args[oldListId]}" ]; then
+    args[oldListId]=$(./get_or_create_list "${args[boardId]}" "Old Release")
+fi
+
+if [ -z "${args[newListId]}" ]; then 
+    args[newListId]=$(./get_or_create_list "${args[boardId]}" "${args[newReleaseName]}")
+fi
+
+declare -a brands=(
+    oodio
+    ucla
+    adobe
+    viacom
+    parkwoodent
+    ifc
+    invision
+    spectrum
+    spe
+    cbs
+    20thcentury
+    netflix
+    cwtv
+    hulu
+    warnerbros
+    enterprise
+)
+
+declare -A cards
+
+for brand in "${brands[@]}"; do
+    cards[$brand]=$(./get_or_create_card "${args[oldListId]}" "$brand")
+    log="./logs.d/$brand.log"
+    touch "$log"
+    chmod u+w "$log"
+done
+
+for brand in "${brands[@]}"; do
+    bash update_brand\
+        --brand "$brand"\
+        --cardId "${cards[$brand]}"\
+        --boardId "${args[boardId]}"\
+        --newListId "${args[newListId]}"\
+        --successLabelId "${args[successLabelId]}"\
+        --failLabelId "${args[failLabelId]}" & #async
+done; wait
+
+# do something with logs

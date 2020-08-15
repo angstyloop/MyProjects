@@ -1,0 +1,5 @@
+#!/bin/bash
+
+boardId=$1
+./trello_api --endpoint "boards/$boardId/cards" --method GET
+

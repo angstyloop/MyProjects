@@ -1,0 +1,63 @@
+# Args
+FORCE=0
+if [ "$1" = "--forceModeEnabled" ]; then FORCE=1; fi;
+
+# Helper functions
+
+# BASH command or commands that perform(s) the update.
+#update() { $1 is the brand
+#    dfs-deploy release/bobafett-update4 "$1" nodb
+#}
+update(){
+    echo "Running mock update on $1"
+}
+
+# Try to perform the update to the brand (1st arg $1), if the update command gives an error, give up on updating the brands and exit.
+tryUpdate() { # $1 is the brand
+    echo 
+    echo "Updating $1 ..."
+    echo 
+    (update "$1" && echo "Successfully updated $1.") || (echo "Something went wrong updating $1. Aborting."; exit 1;)
+}
+
+# Display a message prompt. Exit if the first letter typed is not "y". If it is "y" continue execution of program as normal.
+askPermission() {  # $1 is the message prompt
+    echo
+    read -p "${1} (y)" -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then 
+        echo Aborting
+        exit 1 
+    fi
+}
+
+# If not in force mode, prompt user to copy the list of brands to their clipboard, ask if it looks right, and finally ask to start updates.
+# In force mode, none of that happens, so in that case you're expected to already have a list of brands on your clipboard.
+if [ $FORCE -eq 0 ]; then
+    # Get list of brands from clipboard.
+    read -p "Copy a list of brands onto your clipboard and then press any key." -n 1 -r
+    BRANDS=$(pbpaste)
+    echo
+    echo BRANDS
+    echo -------
+    for BRAND in ${BRANDS[@]}; do echo $BRAND; done;
+
+    # Make user double check what they pasted to the clipboard.
+    askPermission "Does this look right?"
+    askPermission "Ready to start?"
+    echo
+    echo "Starting updates..."
+    echo
+else
+    BRANDS=$(pbpaste)
+fi
+
+
+# Update each brand, asking for permission before each unless force mode is enabled.
+for BRAND in ${BRANDS[@]}; do
+    # If not in force mode ask permission before each brand.
+    if [ $FORCE -eq 0 ]; then
+        askPermission "Update $BRAND?"
+    fi
+    tryUpdate $BRAND
+done

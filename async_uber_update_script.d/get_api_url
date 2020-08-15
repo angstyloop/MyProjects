@@ -1,0 +1,4 @@
+#!/bin/bash
+
+endpoint=$1
+echo "https://api.trello.com/1/$endpoint?key=$TRELLO_API_KEY&token=$TRELLO_API_TOKEN"

@@ -1,0 +1,29 @@
+#!/bin/bash
+
+declare -A args=( [foo]="" [bar]="" [baz]="" )
+
+for ((i=1; i<=$#; i++)); do
+    match=""
+    for it in "${!args[@]}"; do
+        if [ "--$it" == "${!i}" ]; then
+            ((i++))
+            args[$it]=${!i}
+            match=1
+        fi
+    done
+ 
+    if [ -z $match ]; then
+        i=1
+        for ((; i < ${#args[@]}; i++)); do
+            usageStr+="--${!i} <${!i}> | "
+        done
+        usageStr+="--${!i} <${!i}>" #last
+
+        echo "Usage: $usageStr"
+        exit 1
+    fi
+done
+
+echo "${args[foo]}"
+echo "${args[bar]}"
+echo "${args[baz]}"

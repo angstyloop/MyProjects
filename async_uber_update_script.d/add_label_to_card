@@ -1,0 +1,6 @@
+#!/bin/bash
+
+cardId=$1
+labelId=$2
+./trello_api --endpoint "cards/$cardId/idLabels" --method POST --args "value=$labelId"
+

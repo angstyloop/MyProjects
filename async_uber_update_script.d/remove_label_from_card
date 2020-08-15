@@ -1,0 +1,7 @@
+#!/bin/bash
+cardId=$1
+labelId=$2
+method=DELETE
+url="https://api.trello.com/1/cards/$cardId/idLabels/$labelId"
+
+curl -X $method -d key="$TRELLO_API_KEY" -d token="$TRELLO_API_TOKEN" "$url"

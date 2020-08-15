@@ -1,0 +1,5 @@
+#!/bin/bash
+
+boardId=$1
+name=$2
+./get_lists "$boardId" | jq ".[] | select(.name==\"$name\") | .id" | tr -d \"
