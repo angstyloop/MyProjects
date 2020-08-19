@@ -2,8 +2,8 @@
 
 source trello_auth_creds
 
+# named args
 args='{}'
-
 for ((i=1; i<=$#; i++)); do
     case "${!i}" in
         --args)
@@ -28,7 +28,7 @@ for ((i=1; i<=$#; i++)); do
             method=${!i}
             ;;
         *)
-            echo "Usage [ --args name1=value1 [name2=value2 ...] | --endpoint lists/{id} | --method (GET|POST|...) ]."
+            echo "Usage [ --args name1=value1 name2=value2 ... | --endpoint lists/{id} | --method (GET|POST|...) ]."
             exit 1
     esac
 done
