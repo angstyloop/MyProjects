@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# named args
+# init named args map
 declare -A args=( 
     [brand]="" 
     [cardId]="" 
@@ -8,7 +8,9 @@ declare -A args=(
     [newListId]="" 
     [approvedReadyToUpdateLabelId]="" 
     [s3LogDir]=""
+    [awsProfile]=""
 )
+# fill named args
 for ((i=1; i<=$#; i++)); do
    match=""
    for it in "${!args[@]}"; do
@@ -28,6 +30,8 @@ for ((i=1; i<=$#; i++)); do
        exit 1
    fi
 done
+
+# named args already checked for null in async_updates, no need to do it here again
 
 log="./logs.d/${args[brand]}.log"
 touch $log
