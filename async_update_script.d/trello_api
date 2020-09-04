@@ -47,4 +47,4 @@ done
 
 url="https://api.trello.com/1/$endpoint?key=$TRELLO_API_KEY&token=$TRELLO_API_TOKEN"
 
-curl -s -H "Content-Type: application/json" -X "$method" -d "$args" "$url" 
+curl --silent --show-error -H "Content-Type: application/json" -X "$method" -d "$args" "$url" 

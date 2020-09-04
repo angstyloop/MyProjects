@@ -2,7 +2,7 @@
 
 source trello_auth_creds
 
-res=$(curl -s "https://api.trello.com/1/members/me/boards?key=$TRELLO_API_KEY&response_type=token&token=$TRELLO_API_TOKEN")
+res=$(curl -sS "https://api.trello.com/1/members/me/boards?key=$TRELLO_API_KEY&response_type=token&token=$TRELLO_API_TOKEN")
 
 # If the first character of the response isn't a left square bracket there must have been an error, because this endpoint always returns a list of the available boards after successful authentication.
 if [ '[' != "${res:0:1}" ]; then
