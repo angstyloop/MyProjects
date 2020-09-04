@@ -1,0 +1,21 @@
+#!/bin/bash
+# boilerplate for named args
+declare -A args=([]="") # add args here
+usageStr="Usage: ./$0 --argName argValue
+Arguments: [${!args[*]}]"
+if [ $# -lt 2 ]; then
+    echo "$usageStr" && exit 1
+fi
+for ((i=1; i<=$#; i++)); do
+    match=""
+    for it in "${!args[@]}"; do
+        if [ "--$it" == "${!i}" ]; then
+            ((i++))
+            args[$it]=${!i}
+            match=1
+        fi
+    done
+    if [ -z $match ]; then
+        echo "$usageStr" && exit 1
+    fi
+done

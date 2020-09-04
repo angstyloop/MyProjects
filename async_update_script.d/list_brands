@@ -1,0 +1,8 @@
+#!/bin/bash
+
+source brand_trello_cards
+
+for brand in "${!cards[@]}"; do
+    echo "$brand"
+done
+

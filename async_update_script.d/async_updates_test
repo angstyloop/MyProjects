@@ -2,16 +2,24 @@
 
 set -m
 
-### named args
+### Boilerplate for named args.
 declare -A args=( 
-    [newReleaseName]="New Release" 
-    [boardId]="" 
-    [successLabelId]="" 
-    [failLabelId]="" 
-    [oldListId]="" 
-    [newListId]="" 
-    [s3LogDir]="s3://whatever/bucket/dir"
+    [oldListId]=''
+    [oldReleaseName]='Old Release'
+    [newListId]=''
+    [newReleaseName]='New Release'
+    [boardId]='5f3319888b0b91419ab0f947' 
+    [boardName]='TestBoard12345'
+    [approvedReadyToUpdateLabelId]='5f48977ec4c29c63b6f23fc7'
+    [approvedReadyToUpdateLabelName]='Approved Ready to Update'
+    [s3LogDir]='s3://dfs-aws-logs/dfs-deploy'
+    [awsProfile]=dev-sean
 )
+usageStr="Usage: ./$0 --argName argValue
+Arguments: [${!args[*]}]"
+if [ $# -lt 2 ]; then
+    echo "$usageStr" && exit 1
+fi
 for ((i=1; i<=$#; i++)); do
     match=""
     for it in "${!args[@]}"; do
@@ -22,92 +30,125 @@ for ((i=1; i<=$#; i++)); do
         fi
     done
     if [ -z $match ]; then
-        i=1
-        for ((; i < ${#args[@]}; i++)); do
-            usageStr+="--${!i} <${!i}> | "
-        done
-        usageStr+="--${!i} <${!i}>" #last
-        echo "Usage: $usageStr"
-        exit 1
+        echo "Usage: $usageStr" &&exit 1
     fi
 done
 ###
 
+### Make a blank brand-independent log with the right permissions.
 mkdir -p "./logs.d"
-gLog="./logs.d/async_updates.log"
+gLog="./logs.d/async_updates_test.log"
 touch $gLog
 chmod u+rw $gLog
+###
 
+### Use trello api key and token to get authorization to use trello api.
 source trello_auth_creds
 ./trello_auth > $gLog
+###
+
+### If awsProfile arg is non-zero, export it as global AWS_PROFILE variable.
+if [ -n "${args[awsProfile]}" ]; then
+    export AWS_PROFILE=${args[awsProfile]}
+fi
+###
+
+### For each of the arguments below if the argument is zero-length, try to use the name to grab the id using the trello api, and if that fails throw an error.
 
 if [ -z "${args[boardId]}" ]; then
-    args[boardId]=$(./get_board_id "TestBoard12345")
+    if [ -n "${args[boardName]}" ]; then
+        args[boardId]=$(./get_board_id "$boardName")
+    else
+        echo "boardId required"
+        exit 1
+    fi
 fi
 
-if [ -z "${args[successLabelId]}" ]; then
-    args[successLabelId]=$(./get_or_create_label "${args[boardId]}" "MyTestSuccessLabel" green)
-fi
-
-if [ -z "${args[failLabelId]}" ]; then
-    args[failLabelId]=$(./get_or_create_label "${args[boardId]}" "MyTestFailLabel" red)
+if [ -z "${args[approvedReadyToUpdateLabelId]}" ]; then
+    if [ -n "${args[approvedReadyToUpdateLabelName]}" ]; then
+        args[failLabelId]=$(./get_or_create_label "${args[boardId]}" "${args[approvedReadyToUpdateLabelName]}")
+    else
+        echo "approvedReadyToUpdateLabelId or approvedReadytoUpdateLabelName required"
+        exit 1
+    fi
 fi
 
 if [ -z "${args[oldListId]}" ]; then
-    args[oldListId]=$(./get_or_create_list "${args[boardId]}" "Old Release")
+    if [ -n "${args[oldReleaseName]}" ]; then
+        args[oldListId]=$(./get_or_create_list "${args[boardId]}" "${args[oldReleaseName]}")
+    else
+        echo "oldListId or oldReleaseName required"
+        exit 1
+    fi
 fi
 
 if [ -z "${args[newListId]}" ]; then 
-    args[newListId]=$(./get_or_create_list "${args[boardId]}" "${args[newReleaseName]}")
+    if [ -n "${args[newReleaseName]}" ]; then
+        args[newListId]=$(./get_or_create_list "${args[boardId]}" "${args[newReleaseName]}")
+    else
+        echo "newListI or newReleaseName required"
+        exit 1 
+    fi
 fi
 
-declare -a brands=(
-    alpha
-    beta
-    gamma
-    delta
-    epsilon
-    zeta
-    eta
-    theta
-    iota
-    kappa
-    lambda
-    mu
-    nu
-    xi
-    omicron
-    pi
-    rho
-    sigma
-    tau
-    upsilon
-    phi
-    chi
-    psi
-    omega
+### Map of brand short name to trello card id. Empty for testing (so cards get created automatically below).
+declare -A cards=(
+    [alpha]=""
+    [beta]=""
+    [gamma]=""
+    [delta]=""
+    [epsilon]=""
+    [zeta]=""
+    [eta]=""
+    [theta]=""
+    [iota]=""
+    [kappa]=""
+    [lambda]=""
+    [mu]=""
+    [nu]=""
+    [xi]=""
+    [omicron]=""
+    [pi]=""
+    [rho]=""
+    [sigma]=""
+    [tau]=""
+    [upsilon]=""
+    [phi]=""
+    [chi]=""
+    [psi]=""
+    [omega]=""
 )
+###
 
-declare -A cards
-
-for brand in "${brands[@]}"; do
+### For each brand, get/create a trello card and add the "Approved Ready To Update" label to it, and then make a blank log file for that brand. Outside of testing, we won't be creating anything, and we won't be adding the label, since it will already be on the cards.
+for brand in "${!cards[@]}"; do
     cards[$brand]=$(./get_or_create_card "${args[oldListId]}" "$brand")
+    ./add_label_to_card "${cards[$brand]}" "${args[approvedReadyToUpdateLabelId]}"
     log="./logs.d/$brand.log"
     touch "$log"
     chmod u+rw "$log"
 done
+###
 
-for brand in "${brands[@]}"; do
-    bash update_brand\
+### Concurrently deploy the update to each brand. Then wait for each thread to finish before moving on.
+for brand in "${!cards[@]}"; do
+    bash update_brand_test \
         --brand "$brand"\
-        --cardId "${cards[$brand]}"\
-        --boardId "${args[boardId]}"\
-        --newListId "${args[newListId]}"\
-        --successLabelId "${args[successLabelId]}"\
-        --failLabelId "${args[failLabelId]}"\
-        --s3LogDir "${args[s3LogDir]}" & #async
-done; wait
+        --newReleaseName "${args[newReleaseName]}" \
+        --cardId "${cards[$brand]}" \
+        --boardId "${args[boardId]}" \
+        --newListId "${args[newListId]}" \
+        --approvedReadyToUpdateLabelId "${args[approvedReadyToUpdateLabelId]}" \
+        --s3LogDir "${args[s3LogDir]}" \
+        --awsProfile "$AWS_PROFILE" &
+done 
+wait
+###
 
-# clean up
+### Copy global log to S3. Each brand also has its own log. See update_brand.
+aws s3 cp $gLog "$s3LogDir/async_updates.log"
+
+### Clean up local logs
 rm $gLog
 rm -r logs.d
+

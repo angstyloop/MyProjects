@@ -3,6 +3,19 @@
 source trello_auth_creds
 
 # named args
+
+usageStr="
+Usage: ./$0 [
+    --args name1=value1 name2=value2 ... |
+    --endpoint lists/{id} |
+    --method {GET|POST|...}
+].
+"
+
+if [ $# -lt 2 ]; then 
+    echo "$usageStr" && exit 1
+fi
+
 args='{}'
 for ((i=1; i<=$#; i++)); do
     case "${!i}" in
@@ -28,9 +41,10 @@ for ((i=1; i<=$#; i++)); do
             method=${!i}
             ;;
         *)
-            echo "Usage [ --args name1=value1 name2=value2 ... | --endpoint lists/{id} | --method (GET|POST|...) ]."
-            exit 1
+            echo "$usageStr" && exit 1
     esac
 done
+
 url="https://api.trello.com/1/$endpoint?key=$TRELLO_API_KEY&token=$TRELLO_API_TOKEN"
-curl -H "Content-Type: application/json" -X "$method" -d "$args" "$url" 
+
+curl -s -H "Content-Type: application/json" -X "$method" -d "$args" "$url" 
