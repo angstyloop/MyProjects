@@ -22,7 +22,7 @@ for ((i=1; i<=$#; i++)); do
         --args)
             j=$((i+1))
             arg="${!j}"
-            while [ "${arg:1}" != '-' ] && [ "$j" -le "$#" ]; do
+            while [ "${arg::1}" != '-' ] && [ "$j" -le "$#" ]; do
                 pair=${!j} # e.g. foo=bar
                 argName=${pair%=*} # foo
                 argValue=${pair#*=} # bar

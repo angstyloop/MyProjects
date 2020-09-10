@@ -3,30 +3,30 @@
 # declare the args map
 declare -A args=( [foo]="" [bar]="" [baz]="" )
 
-# prepare usage string using the keys of the args map
-usageStr="Usage: ./$0 --argName argValue
-Arguments: [${!args[*]}]"
-
-# if there aren't at least two command line arguments ( a name and a value ) show usage and exit
-if [ $# -lt 2 ]; then
-    echo "$usageStr" && exit 1
-fi
-
-# loop through arguments, reading the names and storing the values in the args map
-for ((i=1; i<=$#; i++)); do
-    match=""
-    for it in "${!args[@]}"; do
-        if [ "--$it" == "${!i}" ]; then
-            ((i++))
-            args[$it]=${!i}
-            match=1
-        fi
-    done
-    # if the given arg name matches none of the keys in the args map show usage and exit
-    if [ -z $match ]; then
-        echo "$usageStr" && exit 1
-    fi
-done
+ # prepare usage string using the keys of the args map
+ usageStr="Usage: ./$0 --argName argValue
+ Arguments: [${!args[*]}]"
+ 
+ # if there aren't at least two command line arguments ( a name and a value ) show usage and exit
+ if [ $# -lt 2 ]; then
+     echo "$usageStr" && exit 1
+ fi
+ 
+ # loop through arguments, reading the names and storing the values in the args map
+ for ((i=1; i<=$#; i++)); do
+     match=""
+     for it in "${!args[@]}"; do
+         if [ "--$it" == "${!i}" ]; then
+             ((i++))
+             args[$it]=${!i}
+             match=1
+         fi
+     done
+     # if the given arg name matches none of the keys in the args map show usage and exit
+     if [ -z $match ]; then
+         echo "$usageStr" && exit 1
+     fi
+ done
 
 # now you can use the args in code like this
 echo "${args[foo]} ${args[bar]} ${args[baz]}"
