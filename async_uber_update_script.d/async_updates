@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# Unixy option for "Monitor Mode". Has to do with threads.
+set -m
+
+mkdir logs.d
+
+### Boilerplate for named args.
+
+## Associative array of named command line arguments, like ./myCommand --foo "foo's value". ( Some have default 
+##  values defined here. )
+
+## The ids for boards and labels and lists can be obtained by using the other BASH trello api commands, or by 
+##  appending ".json" to the url of the Trello board and searching for names and ids. For most of the trello-related 
+##  arguments, an id or a name is required ( the name is used to get the id, if there is none. )
+
+declare -A args=( 
+    [mode]=''
+    [oldListId]=''
+    [oldReleaseName]=''
+    [newListId]=''
+    [newReleaseName]=''
+    [boardId]='' 
+    [boardName]=''
+    [approvedReadyToUpdateLabelId]=''
+    [failedToUpdateLabelId]=''
+    [approvedReadyToUpdateLabelName]=''
+    [s3LogDir]=''
+    [awsProfile]=''
+)
+
+# Usage string - prints if user uses incorrectly. user, use the  usage!
+usageStr="Usage: ./$0 --argName argValue
+Arguments: [${!args[*]}]
+modes: pre now full nodb"
+
+# If no args are provided, show usage and quit.
+if [ $# -lt 2 ]; then
+    echo "$usageStr" && exit 1
+fi
+
+# Loop through the arguments, grabbing values and assigning based on the options preceding each value.
+for ((i=1; i<=$#; i++)); do
+    match=""
+    # Check if the option matches any of the options declared above.
+    for it in "${!args[@]}"; do
+        if [ "--$it" == "${!i}" ]; then
+            ((i++))
+            args[$it]=${!i}
+            match=1
+        fi
+    done
+    # If the option doesn't match any of the declared options, it is invalid, so show usage and quit.
+    if [ -z $match ]; then
+        echo "$usageStr" && exit 1
+    fi
+done
+
+### Use trello api key and token to get authorization to use trello API.
+source trello_auth_creds
+./trello_auth
+
+### If awsProfile arg is non-zero, export it as global AWS_PROFILE variable.
+if [ -z "${args[awsProfile]}" ]; then
+    export AWS_PROFILE=${args[awsProfile]}
+fi
+
+### If --mode isn't one of { pre, now, full, nodb }, quit
+if [ -z "${args[mode]}" ]; then
+    match=''
+    for mode in pre now full nodb; do
+        if [ "${args[mode]}" -eq "$mode" ]; then
+            match=1
+        fi
+    done
+    ## no match - must be empty or invalid mode
+    if [ -z "$match" ]; then
+        echo You must specify a mode for the dfs-deploy command. && echo "$usageStr" && exit 1
+    fi
+fi
+
+### For each of the arguments below if the argument is zero-length, try to use the name to grab the id using the trello api, and if that fails throw an error.
+
+if [ -z "${args[boardId]}" ]; then
+    if [ -n "${args[boardName]}" ]; then
+        args[boardId]=$(./get_board_id "${args[boardName]}")
+    else
+        echo "boardId required"
+        exit 1
+    fi
+fi
+
+if [ -z "${args[approvedReadyToUpdateLabelId]}" ]; then
+    if [ -n "${args[approvedReadyToUpdateLabelName]}" ]; then
+        args[failLabelId]=$(./get_label "${args[boardId]}" "${args[approvedReadyToUpdateLabelName]}")
+    else
+        echo "approvedReadyToUpdateLabelId or approvedReadytoUpdateLabelName required"
+        exit 1
+    fi
+fi
+
+if [ -z "${args[oldListId]}" ]; then
+    if [ -n "${args[oldReleaseName]}" ]; then
+        args[oldListId]=$(./get_list "${args[boardId]}" "${args[oldReleaseName]}")
+    else
+        echo "oldListId or oldReleaseName required"
+        exit 1
+    fi
+fi
+
+if [ -z "${args[newListId]}" ]; then
+    if [ -n "${args[newReleaseName]}" ]; then
+        args[newListId]=$(./get_or_create_list "${args[boardId]}" "${args[newReleaseName]}")
+    else
+        echo "newListId or newReleaseName required"
+        exit 1
+    fi
+fi
+
+### Import map of brands to trello card ids.
+source brand_trello_cards
+
+### Make a blank log file for each brand, and remove any "Failed to Update" labels. This creates some noise
+###  in log file, but meh. Scripting!
+ for brand in "${!cards[@]}"; do
+     log="./logs.d/$brand.log"
+     touch "$log"
+     chmod u+rw "$log"
+     ./remove_label_from_card "${cards[$brand]}" "${args[failedToUpdateLabelId]}" > /dev/null
+ done
+
+### Asynchronously update each brand ...
+for brand in "${!cards[@]}"; do
+    bash update_brand \
+        --mode "${args[mode]}" \
+        --brand "$brand" \
+        --newReleaseName "${args[newReleaseName]}" \
+        --cardId "${cards[$brand]}" \
+        --boardId "${args[boardId]}" \
+        --newListId "${args[newListId]}" \
+        --approvedReadyToUpdateLabelId "${args[approvedReadyToUpdateLabelId]}" \
+        --failedToUpdateLabelId "${args[failedToUpdateLabelId]}" \
+        --s3LogDir "${args[s3LogDir]}" &
+done 
+
+### ... and wait for all to finish.
+wait
+
+### Clean up local logs. Don't worry, they are in S3.
+rm -r logs.d

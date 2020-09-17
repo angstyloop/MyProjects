@@ -1,0 +1,14 @@
+#!/bin/bash
+
+./trello_auth
+
+source brand_trello_cards
+
+# card id for brand
+brand=$1
+
+# get the listId for the brand's trello card
+foxList=$(./get_card "${cards[$brand]}" | jq '.idList' | tr -d \")
+
+# get the name of the list, which is the release name
+./get_list "$foxList" | jq '.name' | tr -d \"

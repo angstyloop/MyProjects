@@ -1,27 +1,37 @@
 #!/bin/bash
 
+# Unixy option for "Monitor Mode". Has to do with threads.
 set -m
 
 ### Boilerplate for named args.
+
+## Associative array of named command line arguments, like ./myCommand --foo "foo's value". Some have default values defined here.
 declare -A args=( 
     [oldListId]=''
-    [oldReleaseName]='Old Release'
+    [oldReleaseName]=''
     [newListId]=''
-    [newReleaseName]='New Release'
-    [boardId]='5f3319888b0b91419ab0f947' 
-    [boardName]='TestBoard12345'
-    [approvedReadyToUpdateLabelId]='5f48977ec4c29c63b6f23fc7'
-    [approvedReadyToUpdateLabelName]='Approved Ready to Update'
-    [s3LogDir]='s3://dfs-aws-logs/dfs-deploy'
-    [awsProfile]=dev-sean
+    [newReleaseName]=''
+    [boardId]='' 
+    [boardName]=''
+    [approvedReadyToUpdateLabelId]=''
+    [approvedReadyToUpdateLabelName]=''
+    [s3LogDir]=''
+    [awsProfile]=''
 )
+
+# Usage string
 usageStr="Usage: ./$0 --argName argValue
 Arguments: [${!args[*]}]"
+
+# If no args are provided, show usage and quit.
 if [ $# -lt 2 ]; then
     echo "$usageStr" && exit 1
 fi
+
+# Loop through the arguments, grabbing values and assigning based on the options preceding each value.
 for ((i=1; i<=$#; i++)); do
     match=""
+    # Check if the option matches any of the options declared above.
     for it in "${!args[@]}"; do
         if [ "--$it" == "${!i}" ]; then
             ((i++))
@@ -29,8 +39,9 @@ for ((i=1; i<=$#; i++)); do
             match=1
         fi
     done
+    # If the option doesn't match any of the declared options, it is invalid, so show usage and quit.
     if [ -z $match ]; then
-        echo "Usage: $usageStr" &&exit 1
+        echo "Usage: $usageStr" && exit 1
     fi
 done
 ###
@@ -58,8 +69,9 @@ fi
 if [ -z "${args[boardId]}" ]; then
     if [ -n "${args[boardName]}" ]; then
         args[boardId]=$(./get_board_id "$boardName")
+        echo "${args[boardId]}" >> $gLog
     else
-        echo "boardId required"
+        echo "boardId required" >> $gLog
         exit 1
     fi
 fi
@@ -67,8 +79,9 @@ fi
 if [ -z "${args[approvedReadyToUpdateLabelId]}" ]; then
     if [ -n "${args[approvedReadyToUpdateLabelName]}" ]; then
         args[failLabelId]=$(./get_or_create_label "${args[boardId]}" "${args[approvedReadyToUpdateLabelName]}")
+        echo "${args[failLabelId]}" >> $gLog
     else
-        echo "approvedReadyToUpdateLabelId or approvedReadytoUpdateLabelName required"
+        echo "approvedReadyToUpdateLabelId or approvedReadytoUpdateLabelName required"  >> $gLog
         exit 1
     fi
 fi
@@ -76,8 +89,9 @@ fi
 if [ -z "${args[oldListId]}" ]; then
     if [ -n "${args[oldReleaseName]}" ]; then
         args[oldListId]=$(./get_or_create_list "${args[boardId]}" "${args[oldReleaseName]}")
+        echo "${args[oldListId]}" >> $gLog
     else
-        echo "oldListId or oldReleaseName required"
+        echo "oldListId or oldReleaseName required" >> $gLog
         exit 1
     fi
 fi
@@ -85,8 +99,9 @@ fi
 if [ -z "${args[newListId]}" ]; then 
     if [ -n "${args[newReleaseName]}" ]; then
         args[newListId]=$(./get_or_create_list "${args[boardId]}" "${args[newReleaseName]}")
+        echo "${args[newListId]}" >> $gLog
     else
-        echo "newListI or newReleaseName required"
+        echo "newListI or newReleaseName required" >> $gLog
         exit 1 
     fi
 fi
@@ -118,17 +133,16 @@ declare -A cards=(
     [psi]=""
     [omega]=""
 )
-###
 
 ### For each brand, get/create a trello card and add the "Approved Ready To Update" label to it, and then make a blank log file for that brand. Outside of testing, we won't be creating anything, and we won't be adding the label, since it will already be on the cards.
 for brand in "${!cards[@]}"; do
     cards[$brand]=$(./get_or_create_card "${args[oldListId]}" "$brand")
-    ./add_label_to_card "${cards[$brand]}" "${args[approvedReadyToUpdateLabelId]}"
+    ./add_label_to_card "${cards[$brand]}" "${args[approvedReadyToUpdateLabelId]}" >> $gLog
     log="./logs.d/$brand.log"
     touch "$log"
     chmod u+rw "$log"
+    echo "Created log $log for brand $brand." >> $gLog
 done
-###
 
 ### Concurrently deploy the update to each brand. Then wait for each thread to finish before moving on.
 for brand in "${!cards[@]}"; do
@@ -139,14 +153,12 @@ for brand in "${!cards[@]}"; do
         --boardId "${args[boardId]}" \
         --newListId "${args[newListId]}" \
         --approvedReadyToUpdateLabelId "${args[approvedReadyToUpdateLabelId]}" \
-        --s3LogDir "${args[s3LogDir]}" \
-        --awsProfile "$AWS_PROFILE" &
+        --s3LogDir "${args[s3LogDir]}" &
 done 
 wait
-###
 
 ### Copy global log to S3. Each brand also has its own log. See update_brand.
-aws s3 cp $gLog "$s3LogDir/async_updates.log"
+aws s3 cp $gLog "${args[s3LogDir]}/async_updates.log"
 
 ### Clean up local logs
 rm $gLog

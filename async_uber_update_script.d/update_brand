@@ -1,11 +1,13 @@
 #!/bin/bash
 declare -A args=( 
+    [mode]=""
     [brand]="" 
     [cardId]="" 
     [boardId]="" 
     [newListId]="" 
     [newReleaseName]="" 
     [approvedReadyToUpdateLabelId]="" 
+    [failedToUpdateLabelId]=""
     [s3LogDir]=""
     [awsProfile]=""
 )
@@ -30,7 +32,7 @@ for ((i=1; i<=$#; i++)); do
    fi
 done
 
-# Args were already checked for null in async_updates, so there's no need to do it again here.
+# Args validated in async_updates, so there's no need to do it again here.
 
 # Create a log for the given brand and s3LogDir. 
 log="./logs.d/${args[brand]}.log"
@@ -38,21 +40,23 @@ touch $log
 chmod u+rw $log
 s3Log="${args[s3LogDir]}/${args[brand]}.log"
 
-# Deploy the update to the brand. On success, move the trello card for the brand to the list for the new release, and remove the card's "ApprovedReadyForUpdateLabel". On fail, log failure, and leave the card as it is.
-if ./mock_update_script "${args[brand]}" >> $log 2>&1; then
+# The deployReleaseToBrand script is fictional. See the test versions which use a mock deploy script if you don't have one written yet. Deploy the update to the brand. On success, move the trello card for the brand to the list for the new release, and remove the card's "ApprovedReadyToUpdateLabel". On fail, log failure, and slap a fail label on the card, leaving it in the old list.
+if ./deployReleaseToBrand "${args[newReleaseName]}" "${args[brand]}" "${args[mode]}" >> $log 2>&1; then
     {
         echo Moving card ...
         ./move_card "${args[cardId]}" "${args[boardId]}" "${args[newListId]}"
         echo Removing \"Approved Ready for Update\" label ...
-        ./remove_label_from_card "${args[cardId]}" "${args[approvedReadyForUpdateLabelId]}"
+        ./remove_label_from_card "${args[cardId]}" "${args[approvedReadyToUpdateLabelId]}"
     } >> $log
 else
     {
         echo "Failed to deploy update ${args[newReleaseName]} to cluster for brand ${args[brand]}. See the logs in S3 for the output of the dfs-deploy command."
         echo "Command failed: dfs-deploy release/${args[newReleaseName]} ${args[brand]} nodb"
         echo "S3 log: $s3Log"
+        echo Adding \"Failed to Update\" label ...
+        ./add_label_to_card "${args[cardId]}" "${args[failedToUpdateLabelId]}"
     } >> $log
 fi
 
-# copy log to s3
+# Copy log to S3
 aws s3 cp $log $s3Log
