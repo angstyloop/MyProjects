@@ -1,0 +1,41 @@
+# pcc chem1 bash code macos accessibility
+
+I noticed the list of homework problem numbers is in a nice format to have your computer read them to you from the command line, if you happen to be running macOS. Here's how to do that if you're interested:
+
+1. Open the Terminal app. (Press ⌘+Space and type Terminal. Or go to Applications > Utilities > Terminal)
+
+2. Copy and paste the following onto the command line, but don't press enter yet. (Or it will just read the code on your clipboard!)
+
+pbpaste | sed "s/,/,,,,,/g" | read x; osascript -e "Say \"$x\""
+
+3. Copy the list of comma-separated homework problems (for your edition of Silberberg) onto your clipboard.
+
+4. From the command line, press enter to run that line of code, using your new clipboard contents.
+
+5. If you want a longer pause in between each spoken problem, just add some extra commas (right now there are 5 commas. add more to those if you want). The "sed" part with the commas is just to add a little pause.
+
+This is a nice way to copy them down onto paper without missing any. You can also make your mac say other things, but you might have watch out for some characters like dollars signs and double quotation marks.
+
+1.  Run this line and then type in a message to be read:
+
+read x; osascript -e "Say \"$x\""
+
+2. This line will read a message from your clipboard (be sure to copy and paste it onto the cmd line before copying your message)
+
+pbpaste | read x; osascript -e "Say \"$x\""
+
+## Sidenote, you can also do this the easy way (still macOS):
+
+1. Go to System Preferences > Accessibility > Speech
+
+2.  Click the checkbox next to the text that says "Speak selected text when the key is pressed."
+
+3. If you want a different key than the default (Option+Esc), click the button that says "Change Key".
+
+4. Now you can just highlight stuff and press whatever key you picked.
+
+## Afternote, you can set the volume with osascript too. You might have to play around with it to find the unit volume for your mac.
+
+osascript -e 'Set Volume 0.5'
+
+
