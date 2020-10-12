@@ -24,13 +24,14 @@ function rmTempFiles {
 }
 
 #Build JSON for request to service.
-printf '{"queryStringParameters":{"ip": "%s"}}' $ip > $tempEventJSONFile;
+printf '{"queryStringParameters":{"ip": "%s"}}' "$ip" > $tempEventJSONFile;
 
 #AWS Lambda CLI `invoke`.	
-aws lambda invoke --function-name IpGeoLocationService --payload "file://${tempEventJSONFile}" $tempResponseFile;
 
 #Exit if there were AWS errors.
-[ $? > 0 ] && rmTempFiles && exit 1;
+if aws lambda invoke --region us-east-1 --profile default --function-name IpGeoLocationService --payload "file://${tempEventJSONFile}" --cli-binary-format raw-in-base64-out $tempResponseFile; then 
+    rmTempFiles && exit 1
+fi
 
 #Print response to stdout.
 echo
